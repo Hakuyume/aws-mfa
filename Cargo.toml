@@ -5,8 +5,10 @@ authors = ["Toru Ogawa <Hakuyume@users.noreply.github.com>"]
 edition = "2018"
 
 [dependencies]
+env_logger = "0.6"
 failure = "0.1"
 futures = "0.1"
+log = "0.4"
 rusoto_iam = "0.36"
 rusoto_sts = "0.36"
 tokio-core = "0.1"
