@@ -1,4 +1,4 @@
-# Wrapper of AWS CLI for MFA
+# An AWS CLI helper for MFA
 
 Currently, Yubikey (OATH-TOTP) is supported.
 
