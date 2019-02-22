@@ -4,8 +4,10 @@ Currently, Yubikey (OATH-TOTP) is supported.
 
 ## Setup
 1. Install [Yubico Authenticator](https://developers.yubico.com/yubioath-desktop/).
-1. Configure your Yubikey as the virtual MFA device of your IAM account (*DO NOT CHOOSE U2F SECURITY KEY*).
-1. Setup `awscli`.
+1. Configure your Yubikey as the virtual MFA device of your IAM account ([User Guide](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_mfa_enable_virtual.html#enable-virt-mfa-for-iam-user)).  
+    *DO NOT CHOOSE U2F SECURITY KEY*
+
+1. Configure `AWS CLI` ([User Guide](https://docs.aws.amazon.com/cli/latest/userguide/cli-chap-configure.html#cli-quick-configuration)).
     ```
     $ aws configure
     ...
