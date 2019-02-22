@@ -1,34 +1,77 @@
+use chrono::{DateTime, Duration, Utc};
 use failure::{format_err, Error};
 use futures::prelude::*;
+use ini::Ini;
 use log::info;
+use rusoto_core::{
+    credential::{DefaultCredentialsProvider, ProvideAwsCredentials},
+    HttpClient,
+};
 use rusoto_iam::{Iam, IamClient};
 use rusoto_sts::{Credentials, GetSessionTokenRequest, Sts, StsClient};
 use std::collections::HashMap;
 use std::process::{Command, Stdio};
+use std::sync::Arc;
 use tokio_core::reactor::Core;
 use tokio_process::CommandExt;
 
 fn main() -> Result<(), Error> {
     env_logger::init();
+    let mut core = Core::new()?;
 
-    let iam_client = IamClient::new(Default::default());
-    let sts_client = StsClient::new(Default::default());
+    let credentials_path = dirs::home_dir()
+        .ok_or(format_err!("Cannot detect home directory"))?
+        .join(".aws")
+        .join("credentials");
 
-    let task = get_account_alias(&iam_client)
-        .join3(get_caller_identity(&sts_client), get_yubikey_token_codes())
-        .and_then(|(account_alias, (account, _, user_name), token_codes)| {
-            get_session_token(
-                &sts_client,
-                &account,
-                &account_alias,
-                &user_name,
-                &token_codes,
-            )
-        });
+    let provider = Arc::new(DefaultCredentialsProvider::new()?);
+    let profile_name = {
+        let credentials = core.run(provider.credentials())?;
+        let access_key = credentials.aws_access_key_id();
+        info!("access key (base): {}", access_key);
+        format!("mfa/{}", access_key)
+    };
+    info!("profile name: {}", profile_name);
 
-    let mut core = Core::new().unwrap();
-    let credentials = core.run(task)?;
-    println!("{:?}", credentials);
+    let mut credentials_ini = Ini::load_from_file(&credentials_path)?;
+    let expire = credentials_ini
+        .section(Some(&profile_name as &str))
+        .and_then(|sec| sec.get("aws_expiration"))
+        .and_then(|expire| expire.parse::<DateTime<Utc>>().ok());
+    if let Some(ref expire) = expire {
+        info!("expiration: {}", expire);
+    } else {
+        info!("expiration: N/A");
+    }
+
+    if expire.map_or(true, |expire| expire < Utc::now() + Duration::hours(3)) {
+        let iam_client =
+            IamClient::new_with(HttpClient::new()?, provider.clone(), Default::default());
+        let sts_client =
+            StsClient::new_with(HttpClient::new()?, provider.clone(), Default::default());
+
+        let task = get_account_alias(&iam_client)
+            .join3(get_caller_identity(&sts_client), get_yubikey_token_codes())
+            .and_then(|(account_alias, (account, _, user_name), token_codes)| {
+                get_session_token(
+                    &sts_client,
+                    &account,
+                    &account_alias,
+                    &user_name,
+                    &token_codes,
+                )
+            });
+
+        let credentials = core.run(task)?;
+        credentials_ini
+            .with_section(Some(&profile_name as &str))
+            .set("aws_access_key_id", credentials.access_key_id)
+            .set("aws_secret_access_key", credentials.secret_access_key)
+            .set("aws_session_token", credentials.session_token)
+            .set("aws_expiration", credentials.expiration);
+        credentials_ini.write_to_file(&credentials_path)?;
+    }
+
     Ok(())
 }
 

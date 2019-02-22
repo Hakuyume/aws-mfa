@@ -5,11 +5,15 @@ authors = ["Toru Ogawa <Hakuyume@users.noreply.github.com>"]
 edition = "2018"
 
 [dependencies]
+chrono = "0.4"
+dirs = "1.0"
 env_logger = "0.6"
 failure = "0.1"
 futures = "0.1"
 log = "0.4"
+rusoto_core = "0.36"
 rusoto_iam = "0.36"
 rusoto_sts = "0.36"
+rust-ini = "0.13"
 tokio-core = "0.1"
 tokio-process = "0.2"
