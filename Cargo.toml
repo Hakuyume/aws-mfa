@@ -5,4 +5,5 @@ authors = ["Toru Ogawa <Hakuyume@users.noreply.github.com>"]
 edition = "2018"
 
 [dependencies]
+rusoto_iam = "0.36"
 rusoto_sts = "0.36"

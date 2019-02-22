@@ -1,3 +1,4 @@
+use rusoto_iam::{Iam, IamClient};
 use rusoto_sts::{GetSessionTokenRequest, Sts, StsClient};
 use std::process::{Command, Stdio};
 
@@ -18,11 +19,27 @@ fn main() {
         }
     };
 
+    let account_alias = {
+        let client = IamClient::new(Default::default());
+        let account_aliases = client
+            .list_account_aliases(Default::default())
+            .sync()
+            .unwrap()
+            .account_aliases;
+        account_aliases
+            .into_iter()
+            .next()
+            .expect("Cannot fetch account alias")
+    };
+
     let output = Command::new("ykman")
         .arg("oath")
         .arg("code")
         .arg("--single")
-        .arg(format!("Amazon Web Services:{}@", user_name))
+        .arg(format!(
+            "Amazon Web Services:{}@{}",
+            user_name, account_alias
+        ))
         .stderr(Stdio::inherit())
         .output()
         .unwrap();
