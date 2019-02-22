@@ -5,5 +5,9 @@ authors = ["Toru Ogawa <Hakuyume@users.noreply.github.com>"]
 edition = "2018"
 
 [dependencies]
+failure = "0.1"
+futures = "0.1"
 rusoto_iam = "0.36"
 rusoto_sts = "0.36"
+tokio-core = "0.1"
+tokio-process = "0.2"
