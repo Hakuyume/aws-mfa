@@ -1,7 +1,7 @@
 # An AWS CLI helper for MFA
 
 Currently, `aws-mfa` supports two methods.
-- Yubikey (OATH-TOTP)
+- [Yubikey (OATH-TOTP)](https://developers.yubico.com/OATH/)
 - Manual input (from your virtual device)
 
 ## Setup
