@@ -1,10 +1,8 @@
+#[cfg(feature = "yubikey")]
 mod yubikey;
 
-use self::yubikey::Yubikey;
-use failure::{format_err, Error};
-use log::{info, warn};
-use pcsc::{Context, Scope};
-use std::time::{SystemTime, UNIX_EPOCH};
+use failure::Error;
+use log::warn;
 
 pub fn get_token_code(issuer: &str) -> Result<String, Error> {
     get_token_code_from_yubikey(&issuer)
@@ -22,7 +20,13 @@ fn get_token_code_from_prompt(issuer: &str) -> Result<String, Error> {
     ))?)
 }
 
+#[cfg(feature = "yubikey")]
 fn get_token_code_from_yubikey(issuer: &str) -> Result<String, Error> {
+    use self::yubikey::Yubikey;
+    use log::info;
+    use pcsc::{Context, Scope};
+    use std::time::{SystemTime, UNIX_EPOCH};
+
     let context = Context::establish(Scope::User)?;
     let mut buffer = Vec::new();
     let yubikey = Yubikey::connect(&context, &mut buffer)?;
@@ -37,4 +41,10 @@ fn get_token_code_from_yubikey(issuer: &str) -> Result<String, Error> {
     let token_code = format!("{:01$}", data % 10_u32.pow(digits as _), digits as _);
     info!("token_code: {}", token_code);
     Ok(token_code)
+}
+
+#[cfg(not(feature = "yubikey"))]
+fn get_token_code_from_yubikey(_: &str) -> Result<String, Error> {
+    use failure::format_err;
+    Err(format_err!("Yubikey support is disabled"))
 }

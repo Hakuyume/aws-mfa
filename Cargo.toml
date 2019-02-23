@@ -4,6 +4,10 @@ version = "0.1.0"
 authors = ["Toru Ogawa <Hakuyume@users.noreply.github.com>"]
 edition = "2018"
 
+[features]
+default = ["yubikey"]
+yubikey = ["pcsc"]
+
 [dependencies]
 chrono = "0.4"
 dirs = "1.0"
@@ -11,7 +15,7 @@ env_logger = "0.6"
 failure = "0.1"
 futures = "0.1"
 log = "0.4"
-pcsc = "2.1"
+pcsc = { version = "2.1", optional = true }
 rprompt = "1.0"
 rusoto_core = "0.36"
 rusoto_iam = "0.36"
