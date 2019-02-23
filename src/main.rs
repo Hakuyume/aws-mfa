@@ -1,17 +1,22 @@
+mod aws;
+mod token_code;
+
+use aws::*;
 use chrono::{DateTime, Duration, Utc};
 use failure::{format_err, Error};
 use futures::prelude::*;
 use ini::Ini;
-use log::{info, warn};
+use log::info;
 use rusoto_core::{
     credential::{DefaultCredentialsProvider, ProvideAwsCredentials},
     HttpClient,
 };
-use rusoto_iam::{Iam, IamClient};
-use rusoto_sts::{Credentials, GetSessionTokenRequest, Sts, StsClient};
+use rusoto_iam::IamClient;
+use rusoto_sts::{Credentials, StsClient};
 use std::env;
-use std::process::{Command, Stdio};
+use std::process::Command;
 use std::sync::Arc;
+use token_code::get_token_code;
 use tokio_core::reactor::Core;
 
 fn main() -> Result<(), Error> {
@@ -71,12 +76,7 @@ fn main() -> Result<(), Error> {
             core.run(get_account_alias(&iam_client).join(get_caller_identity(&sts_client)))?;
         let issuer = format!("Amazon Web Services:{}@{}", user_name, account_alias);
         info!("issuer: {}", issuer);
-        let token_code = get_token_code_from_yubikey(&issuer)
-            .map_err(|err| {
-                warn!("{}", err);
-                err
-            })
-            .or_else(|_| get_token_code_from_prompt(&issuer))?;
+        let token_code = get_token_code(&issuer)?;
         let credentials = core.run(get_session_token(
             &sts_client,
             &account,
@@ -116,104 +116,5 @@ fn main() -> Result<(), Error> {
                 _ => format_err!("Command failed"),
             })
         }
-    }
-}
-
-fn get_account_alias<C>(client: &C) -> impl Future<Item = String, Error = Error>
-where
-    C: Iam,
-{
-    info!("iam list-account-aliases");
-    client
-        .list_account_aliases(Default::default())
-        .from_err()
-        .and_then(|r| {
-            info!("account aliases: {:?}", r);
-            let account_alias = r
-                .account_aliases
-                .into_iter()
-                .next()
-                .ok_or(format_err!("No account alias"))?;
-            info!("account alias: {}", account_alias);
-            Ok(account_alias)
-        })
-}
-
-fn get_caller_identity<C>(client: &C) -> impl Future<Item = (String, String, String), Error = Error>
-where
-    C: Sts,
-{
-    info!("sts get-caller-identity");
-    client
-        .get_caller_identity(Default::default())
-        .from_err()
-        .and_then(|r| {
-            info!("caller identity: {:?}", r);
-            let account = r.account.ok_or(format_err!("No account"))?;
-            info!("account: {}", account);
-            let user_arn = r.arn.ok_or(format_err!("No user ARN"))?;
-            info!("user ARN: {}", user_arn);
-            let prefix = format!("arn:aws:iam::{}:user/", account);
-            if user_arn.starts_with(&prefix) {
-                let user_name = user_arn[prefix.len()..].to_owned();
-                info!("user name: {}", user_name);
-                Ok((account, user_arn, user_name))
-            } else {
-                Err(format_err!("Cannot detect user name from user ARN"))
-            }
-        })
-}
-
-fn get_session_token<C>(
-    client: &C,
-    account: &str,
-    user_name: &str,
-    token_code: &str,
-) -> impl Future<Item = Credentials, Error = Error>
-where
-    C: Sts,
-{
-    let serial_number = format!("arn:aws:iam::{}:mfa/{}", account, user_name);
-    info!("serial number: {}", serial_number);
-    info!("sts get-session-token");
-    client
-        .get_session_token(GetSessionTokenRequest {
-            duration_seconds: None,
-            serial_number: Some(serial_number),
-            token_code: Some(token_code.to_owned()),
-        })
-        .from_err()
-        .and_then(|r| {
-            info!("credentials: {:?}", r);
-            r.credentials.ok_or(format_err!("No credentials"))
-        })
-}
-
-fn get_token_code_from_prompt(issuer: &str) -> Result<String, Error> {
-    Ok(rprompt::prompt_reply_stdout(&format!(
-        "Enter token code for '{}' > ",
-        issuer
-    ))?)
-}
-
-fn get_token_code_from_yubikey(issuer: &str) -> Result<String, Error> {
-    info!("ykman oath code --single {}", issuer);
-    let output = Command::new("ykman")
-        .arg("oath")
-        .arg("code")
-        .arg("--single")
-        .arg(issuer)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
-        .output()?;
-    if output.status.success() {
-        let token_code = String::from_utf8_lossy(&output.stdout).trim().to_owned();
-        info!("token code: {:?}", token_code);
-        Ok(token_code)
-    } else {
-        Err(match output.status.code() {
-            Some(code) => format_err!("ykman failed with exit code {}", code),
-            _ => format_err!("ykman failed"),
-        })
     }
 }
