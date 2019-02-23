@@ -216,15 +216,13 @@ fn get_yubikey_token_codes() -> impl Future<Item = HashMap<String, String>, Erro
 fn parse_token_codes(ykman_out: Vec<u8>) -> Result<HashMap<String, String>, Error> {
     String::from_utf8(ykman_out)?
         .lines()
-        .fold(Ok(HashMap::new()), |token_codes, l| {
-            token_codes.and_then(|mut token_codes| {
-                let cols: Vec<_> = l.rsplitn(2, ' ').map(|col| col.trim()).collect();
-                if cols.len() == 2 {
-                    token_codes.insert(cols[1].to_owned(), cols[0].to_owned());
-                    Ok(token_codes)
-                } else {
-                    Err(format_err!("Cannot parse '{}'", l))
-                }
-            })
+        .try_fold(HashMap::new(), |mut token_codes, l| {
+            let cols: Vec<_> = l.rsplitn(2, ' ').map(|col| col.trim()).collect();
+            if cols.len() == 2 {
+                token_codes.insert(cols[1].to_owned(), cols[0].to_owned());
+                Ok(token_codes)
+            } else {
+                Err(format_err!("Cannot parse '{}'", l))
+            }
         })
 }
