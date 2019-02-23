@@ -13,7 +13,6 @@ use std::env;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
 use tokio_core::reactor::Core;
-use tokio_process::CommandExt;
 
 fn main() -> Result<(), Error> {
     env_logger::init();
@@ -67,18 +66,18 @@ fn main() -> Result<(), Error> {
             IamClient::new_with(HttpClient::new()?, provider.clone(), Default::default());
         let sts_client =
             StsClient::new_with(HttpClient::new()?, provider.clone(), Default::default());
-        let task = get_account_alias(&iam_client)
-            .join(get_caller_identity(&sts_client))
-            .and_then(|(account_alias, (account, _, user_name))| {
-                let issuer = format!("Amazon Web Services:{}@{}", user_name, account_alias);
-                info!("issuer: {}", issuer);
-                get_token_code_from_yubikey(&issuer)
-                    .map(|token_code| (account, user_name, token_code))
-            })
-            .and_then(|(account, user_name, token_code)| {
-                get_session_token(&sts_client, &account, &user_name, &token_code)
-            });
-        let credentials = core.run(task)?;
+
+        let (account_alias, (account, _, user_name)) =
+            core.run(get_account_alias(&iam_client).join(get_caller_identity(&sts_client)))?;
+        let issuer = format!("Amazon Web Services:{}@{}", user_name, account_alias);
+        info!("issuer: {}", issuer);
+        let token_code = get_token_code_from_yubikey(&issuer)?;
+        let credentials = core.run(get_session_token(
+            &sts_client,
+            &account,
+            &user_name,
+            &token_code,
+        ))?;
 
         credentials_ini
             .with_section(Some(&profile_name as &str))
@@ -185,29 +184,24 @@ where
         })
 }
 
-fn get_token_code_from_yubikey(issuer: &str) -> impl Future<Item = String, Error = Error> {
+fn get_token_code_from_yubikey(issuer: &str) -> Result<String, Error> {
     info!("ykman oath code --single {}", issuer);
-    Command::new("ykman")
+    let output = Command::new("ykman")
         .arg("oath")
         .arg("code")
         .arg("--single")
         .arg(issuer)
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
-        .spawn_async()
-        .into_future()
-        .and_then(|r| r.wait_with_output())
-        .from_err()
-        .and_then(|r| {
-            if r.status.success() {
-                let token_code = String::from_utf8_lossy(&r.stdout).trim().to_owned();
-                info!("token code: {:?}", token_code);
-                Ok(token_code)
-            } else {
-                Err(match r.status.code() {
-                    Some(code) => format_err!("ykman failed with exit code {}", code),
-                    _ => format_err!("ykman failed"),
-                })
-            }
+        .output()?;
+    if output.status.success() {
+        let token_code = String::from_utf8_lossy(&output.stdout).trim().to_owned();
+        info!("token code: {:?}", token_code);
+        Ok(token_code)
+    } else {
+        Err(match output.status.code() {
+            Some(code) => format_err!("ykman failed with exit code {}", code),
+            _ => format_err!("ykman failed"),
         })
+    }
 }
