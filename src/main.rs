@@ -9,7 +9,6 @@ use rusoto_core::{
 };
 use rusoto_iam::{Iam, IamClient};
 use rusoto_sts::{Credentials, GetSessionTokenRequest, Sts, StsClient};
-use std::collections::HashMap;
 use std::env;
 use std::process::{Command, Stdio};
 use std::sync::Arc;
@@ -69,15 +68,15 @@ fn main() -> Result<(), Error> {
         let sts_client =
             StsClient::new_with(HttpClient::new()?, provider.clone(), Default::default());
         let task = get_account_alias(&iam_client)
-            .join3(get_caller_identity(&sts_client), get_yubikey_token_codes())
-            .and_then(|(account_alias, (account, _, user_name), token_codes)| {
-                get_session_token(
-                    &sts_client,
-                    &account,
-                    &account_alias,
-                    &user_name,
-                    &token_codes,
-                )
+            .join(get_caller_identity(&sts_client))
+            .and_then(|(account_alias, (account, _, user_name))| {
+                let issuer = format!("Amazon Web Services:{}@{}", user_name, account_alias);
+                info!("issuer: {}", issuer);
+                get_token_code_from_yubikey(&issuer)
+                    .map(|token_code| (account, user_name, token_code))
+            })
+            .and_then(|(account, user_name, token_code)| {
+                get_session_token(&sts_client, &account, &user_name, &token_code)
             });
         let credentials = core.run(task)?;
 
@@ -107,10 +106,11 @@ fn main() -> Result<(), Error> {
             .status()?;
         if status.success() {
             Ok(())
-        } else if let Some(code) = status.code() {
-            Err(format_err!("Command failed with exit code {}", code))
         } else {
-            Err(format_err!("Command failed"))
+            Err(match status.code() {
+                Some(code) => format_err!("Command failed with exit code {}", code),
+                _ => format_err!("Command failed"),
+            })
         }
     }
 }
@@ -163,17 +163,14 @@ where
 fn get_session_token<C>(
     client: &C,
     account: &str,
-    account_alias: &str,
     user_name: &str,
-    token_codes: &HashMap<String, String>,
+    token_code: &str,
 ) -> impl Future<Item = Credentials, Error = Error>
 where
     C: Sts,
 {
     let serial_number = format!("arn:aws:iam::{}:mfa/{}", account, user_name);
     info!("serial number: {}", serial_number);
-    let token_code = &token_codes[&format!("Amazon Web Services:{}@{}", user_name, account_alias)];
-    info!("token code: {}", token_code);
     info!("sts get-session-token");
     client
         .get_session_token(GetSessionTokenRequest {
@@ -188,11 +185,13 @@ where
         })
 }
 
-fn get_yubikey_token_codes() -> impl Future<Item = HashMap<String, String>, Error = Error> {
-    info!("ykman oath code");
+fn get_token_code_from_yubikey(issuer: &str) -> impl Future<Item = String, Error = Error> {
+    info!("ykman oath code --single {}", issuer);
     Command::new("ykman")
         .arg("oath")
         .arg("code")
+        .arg("--single")
+        .arg(issuer)
         .stdout(Stdio::piped())
         .stderr(Stdio::inherit())
         .spawn_async()
@@ -201,28 +200,14 @@ fn get_yubikey_token_codes() -> impl Future<Item = HashMap<String, String>, Erro
         .from_err()
         .and_then(|r| {
             if r.status.success() {
-                let token_codes = parse_token_codes(r.stdout)?;
-                info!("token codes: {:?}", token_codes);
-                Ok(token_codes)
+                let token_code = String::from_utf8_lossy(&r.stdout).trim().to_owned();
+                info!("token code: {:?}", token_code);
+                Ok(token_code)
             } else {
                 Err(match r.status.code() {
                     Some(code) => format_err!("ykman failed with exit code {}", code),
                     _ => format_err!("ykman failed"),
                 })
-            }
-        })
-}
-
-fn parse_token_codes(ykman_out: Vec<u8>) -> Result<HashMap<String, String>, Error> {
-    String::from_utf8(ykman_out)?
-        .lines()
-        .try_fold(HashMap::new(), |mut token_codes, l| {
-            let cols: Vec<_> = l.rsplitn(2, ' ').map(|col| col.trim()).collect();
-            if cols.len() == 2 {
-                token_codes.insert(cols[1].to_owned(), cols[0].to_owned());
-                Ok(token_codes)
-            } else {
-                Err(format_err!("Cannot parse '{}'", l))
             }
         })
 }
