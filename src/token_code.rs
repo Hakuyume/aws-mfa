@@ -1,6 +1,10 @@
+mod yubikey;
+
+use self::yubikey::Yubikey;
 use failure::{format_err, Error};
 use log::{info, warn};
-use std::process::{Command, Stdio};
+use pcsc::{Context, Scope};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn get_token_code(issuer: &str) -> Result<String, Error> {
     get_token_code_from_yubikey(&issuer)
@@ -19,23 +23,18 @@ fn get_token_code_from_prompt(issuer: &str) -> Result<String, Error> {
 }
 
 fn get_token_code_from_yubikey(issuer: &str) -> Result<String, Error> {
-    info!("ykman oath code --single {}", issuer);
-    let output = Command::new("ykman")
-        .arg("oath")
-        .arg("code")
-        .arg("--single")
-        .arg(issuer)
-        .stdout(Stdio::piped())
-        .stderr(Stdio::inherit())
-        .output()?;
-    if output.status.success() {
-        let token_code = String::from_utf8_lossy(&output.stdout).trim().to_owned();
-        info!("token code: {:?}", token_code);
-        Ok(token_code)
-    } else {
-        Err(match output.status.code() {
-            Some(code) => format_err!("ykman failed with exit code {}", code),
-            _ => format_err!("ykman failed"),
-        })
-    }
+    let context = Context::establish(Scope::User)?;
+    let mut buffer = Vec::new();
+    let yubikey = Yubikey::connect(&context, &mut buffer)?;
+    yubikey.select(&mut buffer)?;
+    println!("Touch your YubiKey...");
+    let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
+    let (digits, data) = yubikey.calculate(issuer, &(timestamp / 30).to_be_bytes(), &mut buffer)?;
+
+    let offset = (data[data.len() - 1] & 0x0f) as _;
+    let data = u32::from_be_bytes(unsafe { *(data[offset..offset + 4].as_ptr() as *const _) })
+        & 0x7fffffff;
+    let token_code = format!("{:01$}", data % 10_u32.pow(digits as _), digits as _);
+    info!("token_code: {}", token_code);
+    Ok(token_code)
 }
