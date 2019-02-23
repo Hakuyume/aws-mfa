@@ -89,8 +89,8 @@ fn main() -> Result<(), Error> {
             )
             .set("aws_session_token", &credentials.session_token as &str)
             .set("aws_expiration", &credentials.expiration as &str);
-        info!("save to: {}", credentials_path.display());
         credentials_ini.write_to_file(&credentials_path)?;
+        info!("save to: {}", credentials_path.display());
         credentials
     };
 
