@@ -2,7 +2,7 @@ use chrono::{DateTime, Duration, Utc};
 use failure::{format_err, Error};
 use futures::prelude::*;
 use ini::Ini;
-use log::info;
+use log::{info, warn};
 use rusoto_core::{
     credential::{DefaultCredentialsProvider, ProvideAwsCredentials},
     HttpClient,
@@ -71,7 +71,12 @@ fn main() -> Result<(), Error> {
             core.run(get_account_alias(&iam_client).join(get_caller_identity(&sts_client)))?;
         let issuer = format!("Amazon Web Services:{}@{}", user_name, account_alias);
         info!("issuer: {}", issuer);
-        let token_code = get_token_code_from_yubikey(&issuer)?;
+        let token_code = get_token_code_from_yubikey(&issuer)
+            .map_err(|err| {
+                warn!("{}", err);
+                err
+            })
+            .or_else(|_| get_token_code_from_prompt(&issuer))?;
         let credentials = core.run(get_session_token(
             &sts_client,
             &account,
@@ -182,6 +187,13 @@ where
             info!("credentials: {:?}", r);
             r.credentials.ok_or(format_err!("No credentials"))
         })
+}
+
+fn get_token_code_from_prompt(issuer: &str) -> Result<String, Error> {
+    Ok(rprompt::prompt_reply_stdout(&format!(
+        "Enter token code for '{}' > ",
+        issuer
+    ))?)
 }
 
 fn get_token_code_from_yubikey(issuer: &str) -> Result<String, Error> {

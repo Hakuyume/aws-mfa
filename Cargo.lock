@@ -61,6 +61,7 @@ dependencies = [
  "failure 0.1.5 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.1.25 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rprompt 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusoto_core 0.36.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusoto_iam 0.36.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rusoto_sts 0.36.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -907,6 +908,11 @@ dependencies = [
 ]
 
 [[package]]
+name = "rprompt"
+version = "1.0.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+
+[[package]]
 name = "rusoto_core"
 version = "0.36.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1614,6 +1620,7 @@ dependencies = [
 "checksum regex 1.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "37e7cbbd370869ce2e8dff25c7018702d10b21a20ef7135316f8daecd6c25b7f"
 "checksum regex-syntax 0.6.5 (registry+https://github.com/rust-lang/crates.io-index)" = "8c2f35eedad5295fdf00a63d7d4b238135723f92b434ec06774dad15c7ab0861"
 "checksum remove_dir_all 0.5.1 (registry+https://github.com/rust-lang/crates.io-index)" = "3488ba1b9a2084d38645c4c08276a1752dcbf2c7130d74f1569681ad5d2799c5"
+"checksum rprompt 1.0.3 (registry+https://github.com/rust-lang/crates.io-index)" = "1601f32bc5858aae3cbfa1c645c96c4d820cc5c16be0194f089560c00b6eb625"
 "checksum rusoto_core 0.36.0 (registry+https://github.com/rust-lang/crates.io-index)" = "18a699355ef3189e3bbf34b64ff5a31f06456b689b09d05cdb4a901dcf4406a8"
 "checksum rusoto_credential 0.15.0 (registry+https://github.com/rust-lang/crates.io-index)" = "bcc8dd0f0a7e8b62f31aa23fa12fa0a7ac0e1eb52f6f4d4279d8a2ae51d8f099"
 "checksum rusoto_iam 0.36.0 (registry+https://github.com/rust-lang/crates.io-index)" = "582813a0e26b45ac14305c780a8a7a092b13775ae7209f4de9c68bb6fbe5c101"
