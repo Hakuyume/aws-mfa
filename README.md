@@ -13,7 +13,6 @@ Currently, `aws-mfa` supports two methods.
     $ aws configure
     ...
     ```
-1. (only Yubikey users) Install [Yubikey Manager CLI (ykman)](https://developers.yubico.com/yubikey-manager/).
 1. Install aws-mfa.
     ```
     $ cargo install --git https://github.com/Hakuyume/aws-mfa.git
