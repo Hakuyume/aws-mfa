@@ -89,11 +89,11 @@ pub enum Error {
 fn parse_recv<'a>(
     mut recv: &'a [u8],
 ) -> Result<impl 'a + FnMut(u8) -> Result<&'a [u8], Error>, Error> {
-    let code = if recv.len() >= 2 {
-        Ok(&recv[recv.len() - 2..])
-    } else {
-        Err(Error::InsufficientData)
-    }?;
+    let code = recv
+        .get(recv.len().wrapping_sub(2)..)
+        .ok_or(Error::InsufficientData)?;
+    recv = &recv[..recv.len().wrapping_sub(2)];
+
     match code {
         &[0x90, 0x00] => Ok(move |expected_tag| {
             let tag = *recv.get(0).ok_or(Error::InsufficientData)?;
