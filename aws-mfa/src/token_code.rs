@@ -42,7 +42,7 @@ fn get_token_code_from_yubikey(issuer: &str) -> Result<String, Error> {
             }
             _ => true,
         })
-        .ok_or_else(|| format_err!("No entry matched"))?
+        .ok_or_else(|| format_err!("No such entry"))?
         .1?;
 
     let (digits, response) = match entry.1 {
