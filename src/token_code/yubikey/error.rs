@@ -6,7 +6,7 @@ pub enum Error {
     NoDevice,
     InsufficientData,
     UnexpectedTag(u8),
-    Unknown([u8; 2]),
+    Unknown(u16),
     PCSC(pcsc::Error),
     NoSpace,
     NoSuchObject,
@@ -15,9 +15,15 @@ pub enum Error {
     GenericError,
 }
 
-impl From<pcsc::Error> for Error {
-    fn from(value: pcsc::Error) -> Self {
-        Error::PCSC(value)
+pub fn check_code(code: u16) -> Result<(), Error> {
+    match code {
+        0x9000 => Ok(()),
+        0x6a84 => Err(Error::NoSpace),
+        0x6984 => Err(Error::NoSuchObject),
+        0x6982 => Err(Error::AuthRequired),
+        0x6a80 => Err(Error::WrongSyntax),
+        0x6581 => Err(Error::GenericError),
+        _ => Err(Error::Unknown(code)),
     }
 }
 
@@ -27,7 +33,7 @@ impl fmt::Display for Error {
             Error::NoDevice => write!(f, "No Yubikey found"),
             Error::InsufficientData => write!(f, "Received data does not have enough length"),
             Error::UnexpectedTag(tag) => write!(f, "Unexpected tag (0x{:02x})", tag),
-            Error::Unknown(code) => write!(f, "Unknown response code ({:02x?})", code),
+            Error::Unknown(code) => write!(f, "Unknown response code (0x{:04x})", code),
             Error::PCSC(err) => err.fmt(f),
             _ => fmt::Debug::fmt(self, f),
         }
@@ -35,3 +41,9 @@ impl fmt::Display for Error {
 }
 
 impl error::Error for Error {}
+
+impl From<pcsc::Error> for Error {
+    fn from(value: pcsc::Error) -> Self {
+        Error::PCSC(value)
+    }
+}

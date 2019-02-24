@@ -1,6 +1,7 @@
 mod error;
 mod request;
 
+use self::error::check_code;
 pub use self::error::Error;
 use self::request::Request;
 use pcsc::{Card, Context, Protocols, Scope, ShareMode};
@@ -69,28 +70,23 @@ impl Yubikey {
 fn parse_recv<'a>(
     mut recv: &'a [u8],
 ) -> Result<impl 'a + FnMut(u8) -> Result<&'a [u8], Error>, Error> {
-    let code = recv
-        .get(recv.len().wrapping_sub(2)..)
-        .ok_or(Error::InsufficientData)?;
-    recv = &recv[..recv.len().wrapping_sub(2)];
-
-    match code {
-        &[0x90, 0x00] => Ok(move |expected_tag| {
-            let tag = *recv.get(0).ok_or(Error::InsufficientData)?;
-            if tag == expected_tag {
-                let len = *recv.get(1).ok_or(Error::InsufficientData)? as usize;
-                let data = recv.get(2..2 + len).ok_or(Error::InsufficientData)?;
-                recv = &recv[2 + len..];
-                Ok(data)
-            } else {
-                Err(Error::UnexpectedTag(tag))
-            }
-        }),
-        &[0x6a, 0x84] => Err(Error::NoSpace),
-        &[0x69, 0x84] => Err(Error::NoSuchObject),
-        &[0x69, 0x82] => Err(Error::AuthRequired),
-        &[0x6a, 0x80] => Err(Error::WrongSyntax),
-        &[0x65, 0x81] => Err(Error::GenericError),
-        _ => Err(Error::Unknown(unsafe { *(code.as_ptr() as *const _) })),
+    {
+        let code = recv
+            .get(recv.len().wrapping_sub(2)..)
+            .ok_or(Error::InsufficientData)?;
+        check_code(u16::from_be(unsafe { *(code.as_ptr() as *const _) }))?;
+        recv = &recv[..recv.len().wrapping_sub(2)];
     }
+
+    Ok(move |expected_tag| {
+        let tag = *recv.get(0).ok_or(Error::InsufficientData)?;
+        if tag == expected_tag {
+            let len = *recv.get(1).ok_or(Error::InsufficientData)? as usize;
+            let data = recv.get(2..2 + len).ok_or(Error::InsufficientData)?;
+            recv = &recv[2 + len..];
+            Ok(data)
+        } else {
+            Err(Error::UnexpectedTag(tag))
+        }
+    })
 }
