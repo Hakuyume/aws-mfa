@@ -28,11 +28,8 @@ fn get_token_code_from_yubikey(issuer: &str) -> Result<String, Error> {
 
     let mut buf = Vec::new();
     let yubikey = Yubikey::connect(&mut buf)?;
-    let (version, name) = yubikey.select(&mut buf)?;
-    info!(
-        "oath select: {{ version: {:02x?}, name: {:02x?} }}",
-        version, name
-    );
+    // TODO: handle the case that "the authentication object is set"
+    info!("oath select: {:?}", yubikey.select(&mut buf)?);
 
     println!("Touch your YubiKey...");
     // https://github.com/Yubico/yubikey-manager/blob/b0b894906e450cff726f7ae0e71b329378b4b0c4/ykman/util.py#L400-L401

@@ -11,6 +11,10 @@ impl<'a> Response<'a> {
         Ok(Self(&buf[..buf.len().wrapping_sub(2)]))
     }
 
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+
     pub fn pop(&mut self, expected_tag: u8) -> Result<&'a [u8], Error> {
         let tag = *self.0.get(0).ok_or(Error::InsufficientData)?;
         if tag == expected_tag {
