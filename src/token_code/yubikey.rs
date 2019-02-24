@@ -3,7 +3,6 @@ mod request;
 
 pub use self::error::Error;
 use self::request::Request;
-use log::info;
 use pcsc::{Card, Context, Protocols, Scope, ShareMode};
 
 pub struct Yubikey {
@@ -39,7 +38,7 @@ impl Yubikey {
         })
     }
 
-    pub fn select(&self, buf: &mut Vec<u8>) -> Result<(), Error> {
+    pub fn select<'a>(&self, buf: &'a mut Vec<u8>) -> Result<(&'a [u8], &'a [u8]), Error> {
         let recv = Request::new(0x00, 0xa4, 0x04, 0x00, buf)
             .push_aid(&[0xa0, 0x00, 0x00, 0x05, 0x27, 0x21, 0x01])
             .transmit(&self.card)?;
@@ -47,11 +46,7 @@ impl Yubikey {
         let mut parser = parse_recv(recv)?;
         let version = parser(0x79)?;
         let name = parser(0x71)?;
-        info!(
-            "oath select: {{ version: {:02x?}, name: {:02x?} }}",
-            version, name
-        );
-        Ok(())
+        Ok((version, name))
     }
 
     pub fn calculate<'a>(
