@@ -19,7 +19,12 @@ impl Yubikey {
     pub fn connect_with(context: &Context, buf: &mut Vec<u8>) -> Result<Self, Error> {
         const YK_READER_NAME: &'static str = "yubico yubikey";
 
-        buf.resize(context.list_readers_len()?, 0);
+        unsafe {
+            let len = context.list_readers_len()?;
+            buf.clear();
+            buf.reserve(len);
+            buf.set_len(len);
+        }
         let reader = context
             .list_readers(buf)?
             .find(|reader| {

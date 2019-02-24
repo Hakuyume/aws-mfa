@@ -32,7 +32,10 @@ impl<'a> Request<'a> {
             self.0[4] = (self.0.len() - 5) as _;
         }
         let mid = self.0.len();
-        self.0.resize(mid + MAX_BUFFER_SIZE, 0);
+        unsafe {
+            self.0.reserve(MAX_BUFFER_SIZE);
+            self.0.set_len(mid + MAX_BUFFER_SIZE);
+        }
         let (send, recv) = self.0.split_at_mut(mid);
         card.transmit(send, recv)
     }
