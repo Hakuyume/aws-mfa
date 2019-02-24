@@ -6,6 +6,7 @@ use self::error::check_code;
 pub use self::error::Error;
 use self::request::Request;
 use self::response::Response;
+pub use pcsc;
 use pcsc::{Card, Context, Protocols, Scope, ShareMode};
 
 pub struct Yubikey {

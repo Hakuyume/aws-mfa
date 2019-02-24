@@ -1,16 +1,16 @@
 use super::{Error, Response};
 use pcsc::{Card, MAX_BUFFER_SIZE};
 
-pub struct Request<'a>(&'a mut Vec<u8>);
+pub(crate) struct Request<'a>(&'a mut Vec<u8>);
 
 impl<'a> Request<'a> {
-    pub fn new(cla: u8, ins: u8, p1: u8, p2: u8, buf: &'a mut Vec<u8>) -> Self {
+    pub(crate) fn new(cla: u8, ins: u8, p1: u8, p2: u8, buf: &'a mut Vec<u8>) -> Self {
         buf.clear();
         buf.extend_from_slice(&[cla, ins, p1, p2]);
         Self(buf)
     }
 
-    pub fn push_aid(self, aid: &[u8; 7]) -> Self {
+    pub(crate) fn push_aid(self, aid: &[u8; 7]) -> Self {
         if self.0.len() < 5 {
             self.0.push(0x00);
         }
@@ -18,7 +18,7 @@ impl<'a> Request<'a> {
         self
     }
 
-    pub fn push(self, tag: u8, data: &[u8]) -> Self {
+    pub(crate) fn push(self, tag: u8, data: &[u8]) -> Self {
         if self.0.len() < 5 {
             self.0.push(0x00);
         }
@@ -28,7 +28,7 @@ impl<'a> Request<'a> {
         self
     }
 
-    pub fn transmit(self, card: &Card) -> Result<Response<'a>, Error> {
+    pub(crate) fn transmit(self, card: &Card) -> Result<Response<'a>, Error> {
         if self.0.len() >= 5 {
             self.0[4] = (self.0.len() - 5) as _;
         }

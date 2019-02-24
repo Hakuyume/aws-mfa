@@ -1,9 +1,9 @@
 use super::{check_code, Error};
 
-pub struct Response<'a>(&'a [u8]);
+pub(crate) struct Response<'a>(&'a [u8]);
 
 impl<'a> Response<'a> {
-    pub fn parse(buf: &'a [u8]) -> Result<Self, Error> {
+    pub(crate) fn parse(buf: &'a [u8]) -> Result<Self, Error> {
         let code = buf
             .get(buf.len().wrapping_sub(2)..)
             .ok_or(Error::InsufficientData)?;
@@ -11,11 +11,11 @@ impl<'a> Response<'a> {
         Ok(Self(&buf[..buf.len().wrapping_sub(2)]))
     }
 
-    pub fn is_empty(&self) -> bool {
+    pub(crate) fn is_empty(&self) -> bool {
         self.0.is_empty()
     }
 
-    pub fn pop(&mut self, expected_tag: u8) -> Result<&'a [u8], Error> {
+    pub(crate) fn pop(&mut self, expected_tag: u8) -> Result<&'a [u8], Error> {
         let tag = *self.0.get(0).ok_or(Error::InsufficientData)?;
         if tag == expected_tag {
             let len = *self.0.get(1).ok_or(Error::InsufficientData)? as usize;

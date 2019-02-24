@@ -15,7 +15,7 @@ pub enum Error {
     GenericError,
 }
 
-pub fn check_code(code: u16) -> Result<(), Error> {
+pub(crate) fn check_code(code: u16) -> Result<(), Error> {
     match code {
         0x9000 => Ok(()),
         0x6a84 => Err(Error::NoSpace),

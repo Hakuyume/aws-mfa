@@ -1,6 +1,3 @@
-#[cfg(feature = "yubikey")]
-mod yubikey;
-
 use failure::Error;
 use log::warn;
 
@@ -22,9 +19,9 @@ fn get_token_code_from_prompt(issuer: &str) -> Result<String, Error> {
 
 #[cfg(feature = "yubikey")]
 fn get_token_code_from_yubikey(issuer: &str) -> Result<String, Error> {
-    use self::yubikey::Yubikey;
     use log::info;
     use std::time::{SystemTime, UNIX_EPOCH};
+    use ykoath::Yubikey;
 
     let mut buf = Vec::new();
     let yubikey = Yubikey::connect(&mut buf)?;
