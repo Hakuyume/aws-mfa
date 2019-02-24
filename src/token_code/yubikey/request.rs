@@ -1,3 +1,4 @@
+use super::{Error, Response};
 use pcsc::{Card, MAX_BUFFER_SIZE};
 
 pub struct Request<'a>(&'a mut Vec<u8>);
@@ -27,7 +28,7 @@ impl<'a> Request<'a> {
         self
     }
 
-    pub fn transmit(self, card: &Card) -> Result<&'a [u8], pcsc::Error> {
+    pub fn transmit(self, card: &Card) -> Result<Response<'a>, Error> {
         if self.0.len() >= 5 {
             self.0[4] = (self.0.len() - 5) as _;
         }
@@ -37,6 +38,6 @@ impl<'a> Request<'a> {
             self.0.set_len(mid + MAX_BUFFER_SIZE);
         }
         let (send, recv) = self.0.split_at_mut(mid);
-        card.transmit(send, recv)
+        Response::parse(card.transmit(send, recv)?)
     }
 }
