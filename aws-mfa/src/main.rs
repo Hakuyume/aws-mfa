@@ -24,7 +24,7 @@ fn main() -> Result<(), Error> {
     let mut core = Core::new()?;
 
     let credentials_path = dirs::home_dir()
-        .ok_or(format_err!("Cannot detect home directory"))?
+        .ok_or_else(|| format_err!("Cannot detect home directory"))?
         .join(".aws")
         .join("credentials");
 

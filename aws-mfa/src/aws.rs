@@ -18,7 +18,7 @@ where
                 .account_aliases
                 .into_iter()
                 .next()
-                .ok_or(format_err!("No account alias"))?;
+                .ok_or_else(|| format_err!("No account alias"))?;
             info!("account alias: {}", account_alias);
             Ok(account_alias)
         })
@@ -36,9 +36,9 @@ where
         .from_err()
         .and_then(|r| {
             info!("caller identity: {:?}", r);
-            let account = r.account.ok_or(format_err!("No account"))?;
+            let account = r.account.ok_or_else(|| format_err!("No account"))?;
             info!("account: {}", account);
-            let user_arn = r.arn.ok_or(format_err!("No user ARN"))?;
+            let user_arn = r.arn.ok_or_else(|| format_err!("No user ARN"))?;
             info!("user ARN: {}", user_arn);
             let prefix = format!("arn:aws:iam::{}:user/", account);
             if user_arn.starts_with(&prefix) {
@@ -72,6 +72,6 @@ where
         .from_err()
         .and_then(|r| {
             info!("credentials: {:?}", r);
-            r.credentials.ok_or(format_err!("No credentials"))
+            r.credentials.ok_or_else(|| format_err!("No credentials"))
         })
 }
