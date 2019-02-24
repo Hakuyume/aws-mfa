@@ -1,16 +1,8 @@
-use super::{check_code, Error};
+use super::Error;
 
-pub(crate) struct Response<'a>(&'a [u8]);
+pub(crate) struct Response<'a>(pub(crate) &'a [u8]);
 
 impl<'a> Response<'a> {
-    pub(crate) fn parse(buf: &'a [u8]) -> Result<Self, Error> {
-        let code = buf
-            .get(buf.len().wrapping_sub(2)..)
-            .ok_or(Error::InsufficientData)?;
-        check_code(u16::from_be_bytes(unsafe { *(code.as_ptr() as *const _) }))?;
-        Ok(Self(&buf[..buf.len().wrapping_sub(2)]))
-    }
-
     pub(crate) fn is_empty(&self) -> bool {
         self.0.is_empty()
     }

@@ -1,4 +1,4 @@
-use super::{Error, Response};
+use super::{check_code, Error, Response};
 use pcsc::{Card, MAX_BUFFER_SIZE};
 
 pub(crate) struct Request<'a>(&'a mut Vec<u8>);
@@ -33,11 +33,33 @@ impl<'a> Request<'a> {
             self.0[4] = (self.0.len() - 5) as _;
         }
         let mid = self.0.len();
-        unsafe {
-            self.0.reserve(MAX_BUFFER_SIZE);
-            self.0.set_len(mid + MAX_BUFFER_SIZE);
+
+        let mut remain = true;
+        while remain {
+            let offset = self.0.len() - mid;
+            unsafe {
+                self.0.reserve(MAX_BUFFER_SIZE);
+                self.0.set_len(self.0.len() + MAX_BUFFER_SIZE);
+            }
+            let (send, recv) = self.0.split_at_mut(mid);
+            let recv = card.transmit(
+                if offset == 0 {
+                    send
+                } else {
+                    &[0x00, 0xa5, 0x00, 0x00]
+                },
+                &mut recv[offset..],
+            )?;
+            let code = u16::from_be_bytes(unsafe {
+                *(recv
+                    .get(recv.len().wrapping_sub(2)..)
+                    .ok_or(Error::InsufficientData)?
+                    .as_ptr() as *const _)
+            });
+            remain = check_code(code)?;
+            let recv_len = recv.len();
+            self.0.truncate(mid + offset + recv_len - 2);
         }
-        let (send, recv) = self.0.split_at_mut(mid);
-        Response::parse(card.transmit(send, recv)?)
+        Ok(Response(&self.0[mid..]))
     }
 }
