@@ -34,14 +34,11 @@ fn get_token_code_from_yubikey(issuer: &str) -> Result<String, Error> {
     println!("Touch your YubiKey...");
     // https://github.com/Yubico/yubikey-manager/blob/b0b894906e450cff726f7ae0e71b329378b4b0c4/ykman/util.py#L400-L401
     let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
-    let (digits, data) = yubikey.calculate(issuer, &(timestamp / 30).to_be_bytes(), &mut buf)?;
-
-    // https://github.com/Yubico/yubikey-manager/blob/b0b894906e450cff726f7ae0e71b329378b4b0c4/ykman/oath.py#L330-L331
-    let offset = (data[data.len() - 1] & 0x0f) as _;
-    // https://github.com/Yubico/yubikey-manager/blob/b0b894906e450cff726f7ae0e71b329378b4b0c4/ykman/util.py#L379-L380
-    let data = u32::from_be_bytes(unsafe { *(data[offset..offset + 4].as_ptr() as *const _) })
-        & 0x7fffffff;
+    let (digits, data) =
+        yubikey.calculate(true, issuer, &(timestamp / 30).to_be_bytes(), &mut buf)?;
+    info!("oath calculate: {:?}", (digits, data));
     // https://github.com/Yubico/yubikey-manager/blob/b0b894906e450cff726f7ae0e71b329378b4b0c4/ykman/util.py#L371
+    let data = u32::from_be_bytes(unsafe { *(data.as_ptr() as *const _) });
     let token_code = format!("{:01$}", data % 10_u32.pow(digits as _), digits as _);
     info!("token_code: {}", token_code);
     Ok(token_code)

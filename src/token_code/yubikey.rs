@@ -61,15 +61,16 @@ impl Yubikey {
 
     pub fn calculate<'a>(
         &self,
+        truncate: bool,
         name: &str,
         challenge: &[u8],
         buf: &'a mut Vec<u8>,
     ) -> Result<(u8, &'a [u8]), Error> {
-        let mut res = Request::new(0x00, 0xa2, 0x00, 0x00, buf)
+        let mut res = Request::new(0x00, 0xa2, 0x00, if truncate { 0x01 } else { 0x00 }, buf)
             .push(0x71, name.as_bytes())
             .push(0x74, challenge)
             .transmit(&self.card)?;
-        let response = res.pop(0x75)?;
+        let response = res.pop(if truncate { 0x76 } else { 0x75 })?;
         Ok((response[0], &response[1..]))
     }
 }
