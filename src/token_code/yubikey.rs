@@ -11,17 +11,17 @@ pub struct Yubikey {
 }
 
 impl Yubikey {
-    pub fn connect(buffer: &mut Vec<u8>) -> Result<Self, Error> {
+    pub fn connect(buf: &mut Vec<u8>) -> Result<Self, Error> {
         let context = Context::establish(Scope::User)?;
-        Self::connect_with(&context, buffer)
+        Self::connect_with(&context, buf)
     }
 
-    pub fn connect_with(context: &Context, buffer: &mut Vec<u8>) -> Result<Self, Error> {
+    pub fn connect_with(context: &Context, buf: &mut Vec<u8>) -> Result<Self, Error> {
         const YK_READER_NAME: &'static str = "yubico yubikey";
 
-        buffer.resize(context.list_readers_len()?, 0);
+        buf.resize(context.list_readers_len()?, 0);
         let reader = context
-            .list_readers(buffer)?
+            .list_readers(buf)?
             .find(|reader| {
                 reader
                     .to_string_lossy()
@@ -34,8 +34,8 @@ impl Yubikey {
         })
     }
 
-    pub fn select(&self, buffer: &mut Vec<u8>) -> Result<(), Error> {
-        let recv = Request::new(0x00, 0xa4, 0x04, 0x00, buffer)
+    pub fn select(&self, buf: &mut Vec<u8>) -> Result<(), Error> {
+        let recv = Request::new(0x00, 0xa4, 0x04, 0x00, buf)
             .push_aid(&[0xa0, 0x00, 0x00, 0x05, 0x27, 0x21, 0x01])
             .transmit(&self.card)?;
         // TODO: handle the case of AuthRequired.
@@ -53,9 +53,9 @@ impl Yubikey {
         &self,
         name: &str,
         challenge: &[u8],
-        buffer: &'a mut Vec<u8>,
+        buf: &'a mut Vec<u8>,
     ) -> Result<(u8, &'a [u8]), Error> {
-        let recv = Request::new(0x00, 0xa2, 0x00, 0x00, buffer)
+        let recv = Request::new(0x00, 0xa2, 0x00, 0x00, buf)
             .push(0x71, name.as_bytes())
             .push(0x74, challenge)
             .transmit(&self.card)?;
