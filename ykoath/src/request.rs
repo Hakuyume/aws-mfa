@@ -34,8 +34,7 @@ impl<'a> Request<'a> {
         }
         let mid = self.0.len();
 
-        let mut remain = true;
-        while remain {
+        loop {
             let offset = self.0.len() - mid;
             unsafe {
                 self.0.reserve(MAX_BUFFER_SIZE);
@@ -56,10 +55,11 @@ impl<'a> Request<'a> {
                     .ok_or(Error::InsufficientData)?
                     .as_ptr() as *const _)
             });
-            remain = check_code(code)?;
             let recv_len = recv.len();
             self.0.truncate(mid + offset + recv_len - 2);
+            if !check_code(code)? {
+                return Ok(Response(&self.0[mid..]));
+            }
         }
-        Ok(Response(&self.0[mid..]))
     }
 }
