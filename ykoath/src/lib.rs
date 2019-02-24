@@ -8,6 +8,7 @@ use self::request::Request;
 use self::response::Response;
 pub use pcsc;
 use pcsc::{Card, Context, Protocols, Scope, ShareMode};
+use std::iter;
 
 pub struct Yubikey {
     card: Card,
@@ -64,15 +65,56 @@ impl Yubikey {
     pub fn calculate<'a>(
         &self,
         truncate: bool,
-        name: &str,
+        name: &[u8],
         challenge: &[u8],
         buf: &'a mut Vec<u8>,
     ) -> Result<(u8, &'a [u8]), Error> {
         let mut res = Request::new(0x00, 0xa2, 0x00, if truncate { 0x01 } else { 0x00 }, buf)
-            .push(0x71, name.as_bytes())
+            .push(0x71, name)
             .push(0x74, challenge)
             .transmit(&self.card)?;
-        let response = res.pop(if truncate { 0x76 } else { 0x75 })?;
-        Ok((response[0], &response[1..]))
+        let r = res.pop(if truncate { 0x76 } else { 0x75 })?;
+        Ok((
+            *r.get(0).ok_or(Error::InsufficientData)?,
+            r.get(1..).ok_or(Error::InsufficientData)?,
+        ))
     }
+
+    pub fn calculate_all<'a>(
+        &self,
+        truncate: bool,
+        challenge: &[u8],
+        buf: &'a mut Vec<u8>,
+    ) -> Result<impl 'a + Iterator<Item = Result<(&'a [u8], CalculateAllResponse<'a>), Error>>, Error>
+    {
+        let res = Request::new(0x00, 0xa4, 0x00, if truncate { 0x01 } else { 0x00 }, buf)
+            .push(0x74, challenge)
+            .transmit(&self.card)?;
+        Ok(iter::repeat(()).scan(res, move |res, _| {
+            if res.is_empty() {
+                None
+            } else {
+                Some(res.pop(0x71).and_then(|name| {
+                    let r = res
+                        .pop(if truncate { 0x76 } else { 0x75 })
+                        .and_then(|r| {
+                            Ok(CalculateAllResponse::Response(
+                                *r.get(0).ok_or(Error::InsufficientData)?,
+                                r.get(1..).ok_or(Error::InsufficientData)?,
+                            ))
+                        })
+                        .or_else(|_| res.pop(0x77).map(|_| CalculateAllResponse::HOTP))
+                        .or_else(|_| res.pop(0x7c).map(|_| CalculateAllResponse::Touch))?;
+                    Ok((name, r))
+                }))
+            }
+        }))
+    }
+}
+
+#[derive(Debug)]
+pub enum CalculateAllResponse<'a> {
+    Response(u8, &'a [u8]),
+    HOTP,
+    Touch,
 }
