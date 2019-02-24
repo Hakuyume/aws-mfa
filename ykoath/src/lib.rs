@@ -20,7 +20,7 @@ impl Yubikey {
     }
 
     pub fn connect_with(context: &Context, buf: &mut Vec<u8>) -> Result<Self, Error> {
-        const YK_READER_NAME: &'static str = "yubico yubikey";
+        const YK_READER_NAME: &str = "yubico yubikey";
 
         unsafe {
             let len = context.list_readers_len()?;
@@ -47,17 +47,18 @@ impl Yubikey {
         buf: &'a mut Vec<u8>,
     ) -> Result<(&'a [u8], &'a [u8], Option<(&'a [u8], &'a [u8])>), Error> {
         let mut res = Request::new(0x00, 0xa4, 0x04, 0x00, buf)
-            .push_aid(&[0xa0, 0x00, 0x00, 0x05, 0x27, 0x21, 0x01])
+            .push_aid([0xa0, 0x00, 0x00, 0x05, 0x27, 0x21, 0x01])
             .transmit(&self.card)?;
         let version = res.pop(0x79)?;
         let name = res.pop(0x71)?;
-        if res.is_empty() {
-            Ok((version, name, None))
+        let authentication = if res.is_empty() {
+            None
         } else {
             let challenge = res.pop(0x74)?;
             let algorithm = res.pop(0x7b)?;
-            Ok((version, name, Some((challenge, algorithm))))
-        }
+            Some((challenge, algorithm))
+        };
+        Ok((version, name, authentication))
     }
 
     pub fn calculate<'a>(

@@ -10,11 +10,11 @@ impl<'a> Request<'a> {
         Self(buf)
     }
 
-    pub(crate) fn push_aid(self, aid: &[u8; 7]) -> Self {
+    pub(crate) fn push_aid(self, aid: [u8; 7]) -> Self {
         if self.0.len() < 5 {
             self.0.push(0x00);
         }
-        self.0.extend_from_slice(aid);
+        self.0.extend_from_slice(&aid);
         self
     }
 

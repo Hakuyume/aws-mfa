@@ -7,7 +7,7 @@ impl<'a> Response<'a> {
         let code = buf
             .get(buf.len().wrapping_sub(2)..)
             .ok_or(Error::InsufficientData)?;
-        check_code(u16::from_be(unsafe { *(code.as_ptr() as *const _) }))?;
+        check_code(u16::from_be_bytes(unsafe { *(code.as_ptr() as *const _) }))?;
         Ok(Self(&buf[..buf.len().wrapping_sub(2)]))
     }
 
