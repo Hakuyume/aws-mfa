@@ -13,7 +13,7 @@ Currently, `aws-mfa` supports two methods.
     $ aws configure
     ...
     ```
-1. Install aws-mfa.
+1. Install `aws-mfa`.
     ```
     $ cargo install --git https://github.com/Hakuyume/aws-mfa.git
     ```
