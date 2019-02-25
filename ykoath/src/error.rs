@@ -18,7 +18,7 @@ pub enum Error {
 pub(crate) fn check_code(code: u16) -> Result<bool, Error> {
     match code {
         0x9000 => Ok(false),
-        0x6100...0x61ff => Ok(true),
+        0x6100..=0x61ff => Ok(true),
         0x6a84 => Err(Error::NoSpace),
         0x6984 => Err(Error::NoSuchObject),
         0x6982 => Err(Error::AuthRequired),
@@ -29,7 +29,7 @@ pub(crate) fn check_code(code: u16) -> Result<bool, Error> {
 }
 
 impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
         match self {
             Error::NoDevice => write!(f, "No Yubikey found"),
             Error::InsufficientData => write!(f, "Received data does not have enough length"),
