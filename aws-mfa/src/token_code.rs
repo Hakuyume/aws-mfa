@@ -21,7 +21,7 @@ fn get_token_code_from_prompt(issuer: &str) -> Result<String, Error> {
 fn get_token_code_from_yubikey(issuer: &str) -> Result<String, Error> {
     use log::info;
     use std::time::{SystemTime, UNIX_EPOCH};
-    use ykoath::{CalculateAllResponse, Yubikey};
+    use ykoath::{ResponseWithDigits, ResponseWithTag, Yubikey};
 
     let mut buf = Vec::new();
     let yubikey = Yubikey::connect(&mut buf)?;
@@ -38,23 +38,22 @@ fn get_token_code_from_yubikey(issuer: &str) -> Result<String, Error> {
         .find(|(i, entry)| match entry {
             Ok(entry) => {
                 info!("oath calculate all [{}]: {:?}", i, entry);
-                entry.0 == issuer.as_bytes()
+                entry.name == issuer.as_bytes()
             }
             _ => true,
         })
         .ok_or_else(|| format_err!("No such entry"))?
         .1?;
 
-    let (digits, response) = match entry.1 {
-        CalculateAllResponse::Response(digits, response) => Ok((digits, response)),
-        CalculateAllResponse::Touch => {
+    let ResponseWithDigits { digits, response } = match entry.response {
+        ResponseWithTag::Response(response) => Ok(response),
+        ResponseWithTag::Touch => {
             println!("Touch your YubiKey...");
-            let (digits, response) =
-                yubikey.calculate(true, issuer.as_bytes(), &challenge, &mut buf)?;
-            info!("oath calculate: {:?}", (digits, response));
-            Ok((digits, response))
+            let response = yubikey.calculate(true, issuer.as_bytes(), &challenge, &mut buf)?;
+            info!("oath calculate: {:?}", response);
+            Ok(response.response)
         }
-        CalculateAllResponse::HOTP => Err(format_err!("HOTP is not supported")),
+        ResponseWithTag::HOTP => Err(format_err!("HOTP is not supported")),
     }?;
 
     // https://github.com/Yubico/yubikey-manager/blob/b0b894906e450cff726f7ae0e71b329378b4b0c4/ykman/util.py#L371
