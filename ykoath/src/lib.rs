@@ -148,9 +148,12 @@ fn pop_response_with_digits<'a>(
     apdu_res: &mut ApduResponse<'a>,
     truncate: bool,
 ) -> Result<ResponseWithDigits<'a>, Error> {
-    let r = apdu_res.pop(if truncate { 0x76 } else { 0x75 })?;
-    Ok(ResponseWithDigits {
-        digits: *r.get(0).ok_or(Error::InsufficientData)?,
-        response: r.get(1..).ok_or(Error::InsufficientData)?,
-    })
+    apdu_res
+        .pop(if truncate { 0x76 } else { 0x75 })
+        .and_then(|r| {
+            Ok(ResponseWithDigits {
+                digits: *r.get(0).ok_or(Error::InsufficientData)?,
+                response: r.get(1..).ok_or(Error::InsufficientData)?,
+            })
+        })
 }
