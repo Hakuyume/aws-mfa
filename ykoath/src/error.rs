@@ -7,7 +7,7 @@ pub enum Error {
     InsufficientData,
     UnexpectedTag(u8),
     Unknown(u16),
-    PCSC(pcsc::Error),
+    Pcsc(pcsc::Error),
     NoSpace,
     NoSuchObject,
     AuthRequired,
@@ -35,7 +35,7 @@ impl fmt::Display for Error {
             Error::InsufficientData => write!(f, "Received data does not have enough length"),
             Error::UnexpectedTag(tag) => write!(f, "Unexpected tag (0x{:02x})", tag),
             Error::Unknown(code) => write!(f, "Unknown response code (0x{:04x})", code),
-            Error::PCSC(err) => err.fmt(f),
+            Error::Pcsc(err) => err.fmt(f),
             _ => fmt::Debug::fmt(self, f),
         }
     }
@@ -45,6 +45,6 @@ impl error::Error for Error {}
 
 impl From<pcsc::Error> for Error {
     fn from(value: pcsc::Error) -> Self {
-        Error::PCSC(value)
+        Error::Pcsc(value)
     }
 }
