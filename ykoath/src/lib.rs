@@ -43,23 +43,27 @@ impl Yubikey {
         })
     }
 
-    pub fn select<'a>(
-        &self,
-        buf: &'a mut Vec<u8>,
-    ) -> Result<(&'a [u8], &'a [u8], Option<(&'a [u8], &'a [u8])>), Error> {
-        let mut res = ApduRequest::new(0x00, 0xa4, 0x04, 0x00, buf)
+    pub fn select<'a>(&self, buf: &'a mut Vec<u8>) -> Result<SelectResponse<'a>, Error> {
+        let mut apdu_res = ApduRequest::new(0x00, 0xa4, 0x04, 0x00, buf)
             .push_aid([0xa0, 0x00, 0x00, 0x05, 0x27, 0x21, 0x01])
             .transmit(&self.card)?;
-        let version = res.pop(0x79)?;
-        let name = res.pop(0x71)?;
-        let authentication = if res.is_empty() {
+        let version = apdu_res.pop(0x79)?;
+        let name = apdu_res.pop(0x71)?;
+        let challenge = if apdu_res.is_empty() {
             None
         } else {
-            let challenge = res.pop(0x74)?;
-            let algorithm = res.pop(0x7b)?;
-            Some((challenge, algorithm))
+            let challenge = apdu_res.pop(0x74)?;
+            let algorithm = apdu_res.pop(0x7b)?;
+            Some(ChallengeWithAlgorithm {
+                challenge,
+                algorithm,
+            })
         };
-        Ok((version, name, authentication))
+        Ok(SelectResponse {
+            version,
+            name,
+            challenge,
+        })
     }
 
     pub fn calculate<'a>(
@@ -68,16 +72,14 @@ impl Yubikey {
         name: &[u8],
         challenge: &[u8],
         buf: &'a mut Vec<u8>,
-    ) -> Result<(u8, &'a [u8]), Error> {
-        let mut res = ApduRequest::new(0x00, 0xa2, 0x00, if truncate { 0x01 } else { 0x00 }, buf)
-            .push(0x71, name)
-            .push(0x74, challenge)
-            .transmit(&self.card)?;
-        let r = res.pop(if truncate { 0x76 } else { 0x75 })?;
-        Ok((
-            *r.get(0).ok_or(Error::InsufficientData)?,
-            r.get(1..).ok_or(Error::InsufficientData)?,
-        ))
+    ) -> Result<CalculateResponse<'a>, Error> {
+        let mut apdu_res =
+            ApduRequest::new(0x00, 0xa2, 0x00, if truncate { 0x01 } else { 0x00 }, buf)
+                .push(0x71, name)
+                .push(0x74, challenge)
+                .transmit(&self.card)?;
+        let response = pop_response_with_digits(&mut apdu_res, truncate)?;
+        Ok(CalculateResponse { response })
     }
 
     pub fn calculate_all<'a>(
@@ -85,27 +87,20 @@ impl Yubikey {
         truncate: bool,
         challenge: &[u8],
         buf: &'a mut Vec<u8>,
-    ) -> Result<impl 'a + Iterator<Item = Result<(&'a [u8], CalculateAllResponse<'a>), Error>>, Error>
-    {
-        let res = ApduRequest::new(0x00, 0xa4, 0x00, if truncate { 0x01 } else { 0x00 }, buf)
+    ) -> Result<impl 'a + Iterator<Item = Result<CalculateAllResponse<'a>, Error>>, Error> {
+        let apdu_res = ApduRequest::new(0x00, 0xa4, 0x00, if truncate { 0x01 } else { 0x00 }, buf)
             .push(0x74, challenge)
             .transmit(&self.card)?;
-        Ok(iter::repeat(()).scan(res, move |res, _| {
-            if res.is_empty() {
+        Ok(iter::repeat(()).scan(apdu_res, move |apdu_res, _| {
+            if apdu_res.is_empty() {
                 None
             } else {
-                Some(res.pop(0x71).and_then(|name| {
-                    let r = res
-                        .pop(if truncate { 0x76 } else { 0x75 })
-                        .and_then(|r| {
-                            Ok(CalculateAllResponse::Response(
-                                *r.get(0).ok_or(Error::InsufficientData)?,
-                                r.get(1..).ok_or(Error::InsufficientData)?,
-                            ))
-                        })
-                        .or_else(|_| res.pop(0x77).map(|_| CalculateAllResponse::HOTP))
-                        .or_else(|_| res.pop(0x7c).map(|_| CalculateAllResponse::Touch))?;
-                    Ok((name, r))
+                Some(apdu_res.pop(0x71).and_then(|name| {
+                    let response = pop_response_with_digits(apdu_res, truncate)
+                        .map(ResponseWithTag::Response)
+                        .or_else(|_| apdu_res.pop(0x77).map(|_| ResponseWithTag::HOTP))
+                        .or_else(|_| apdu_res.pop(0x7c).map(|_| ResponseWithTag::Touch))?;
+                    Ok(CalculateAllResponse { name, response })
                 }))
             }
         }))
@@ -113,8 +108,49 @@ impl Yubikey {
 }
 
 #[derive(Debug)]
-pub enum CalculateAllResponse<'a> {
-    Response(u8, &'a [u8]),
+pub struct ChallengeWithAlgorithm<'a> {
+    pub challenge: &'a [u8],
+    pub algorithm: &'a [u8],
+}
+
+#[derive(Debug)]
+pub struct ResponseWithDigits<'a> {
+    pub digits: u8,
+    pub response: &'a [u8],
+}
+
+#[derive(Debug)]
+pub enum ResponseWithTag<'a> {
     HOTP,
     Touch,
+    Response(ResponseWithDigits<'a>),
+}
+
+#[derive(Debug)]
+pub struct SelectResponse<'a> {
+    pub version: &'a [u8],
+    pub name: &'a [u8],
+    pub challenge: Option<ChallengeWithAlgorithm<'a>>,
+}
+
+#[derive(Debug)]
+pub struct CalculateResponse<'a> {
+    pub response: ResponseWithDigits<'a>,
+}
+
+#[derive(Debug)]
+pub struct CalculateAllResponse<'a> {
+    pub name: &'a [u8],
+    pub response: ResponseWithTag<'a>,
+}
+
+fn pop_response_with_digits<'a>(
+    apdu_res: &mut ApduResponse<'a>,
+    truncate: bool,
+) -> Result<ResponseWithDigits<'a>, Error> {
+    let r = apdu_res.pop(if truncate { 0x76 } else { 0x75 })?;
+    Ok(ResponseWithDigits {
+        digits: *r.get(0).ok_or(Error::InsufficientData)?,
+        response: r.get(1..).ok_or(Error::InsufficientData)?,
+    })
 }
