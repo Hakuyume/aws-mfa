@@ -26,7 +26,7 @@ fn get_token_code_from_yubikey(issuer: &str) -> Result<String, Error> {
     let mut buf = Vec::new();
     let yubikey = Yubikey::connect(&mut buf)?;
     // TODO: handle the case that "the authentication object is set"
-    info!("oath select: {:?}", yubikey.select(&mut buf)?);
+    info!("ykoath select: {:?}", yubikey.select(&mut buf)?);
 
     // https://github.com/Yubico/yubikey-manager/blob/b0b894906e450cff726f7ae0e71b329378b4b0c4/ykman/util.py#L400-L401
     let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
@@ -37,7 +37,7 @@ fn get_token_code_from_yubikey(issuer: &str) -> Result<String, Error> {
         .enumerate()
         .find(|(i, entry)| match entry {
             Ok(entry) => {
-                info!("oath calculate all [{}]: {:?}", i, entry);
+                info!("ykoath calculate all [{}]: {:?}", i, entry);
                 entry.name == issuer.as_bytes()
             }
             _ => true,
@@ -50,7 +50,7 @@ fn get_token_code_from_yubikey(issuer: &str) -> Result<String, Error> {
         ResponseWithTag::Touch => {
             println!("Touch your YubiKey...");
             let response = yubikey.calculate(true, issuer.as_bytes(), &challenge, &mut buf)?;
-            info!("oath calculate: {:?}", response);
+            info!("ykoath calculate: {:?}", response);
             Ok(response.response)
         }
         ResponseWithTag::HOTP => Err(format_err!("HOTP is not supported")),
