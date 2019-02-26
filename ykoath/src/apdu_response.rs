@@ -1,8 +1,8 @@
 use super::Error;
 
-pub(crate) struct Response<'a>(pub(crate) &'a [u8]);
+pub(crate) struct ApduResponse<'a>(pub(crate) &'a [u8]);
 
-impl<'a> Response<'a> {
+impl<'a> ApduResponse<'a> {
     pub(crate) fn is_empty(&self) -> bool {
         self.0.is_empty()
     }

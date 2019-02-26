@@ -1,9 +1,9 @@
-use super::{check_code, Error, Response};
+use super::{check_code, ApduResponse, Error};
 use pcsc::{Card, MAX_BUFFER_SIZE};
 
-pub(crate) struct Request<'a>(&'a mut Vec<u8>);
+pub(crate) struct ApduRequest<'a>(&'a mut Vec<u8>);
 
-impl<'a> Request<'a> {
+impl<'a> ApduRequest<'a> {
     pub(crate) fn new(cla: u8, ins: u8, p1: u8, p2: u8, buf: &'a mut Vec<u8>) -> Self {
         buf.clear();
         buf.extend_from_slice(&[cla, ins, p1, p2]);
@@ -28,7 +28,7 @@ impl<'a> Request<'a> {
         self
     }
 
-    pub(crate) fn transmit(self, card: &Card) -> Result<Response<'a>, Error> {
+    pub(crate) fn transmit(self, card: &Card) -> Result<ApduResponse<'a>, Error> {
         if self.0.len() >= 5 {
             self.0[4] = (self.0.len() - 5) as _;
         }
@@ -58,7 +58,7 @@ impl<'a> Request<'a> {
             let recv_len = recv.len();
             self.0.truncate(mid + offset + recv_len - 2);
             if !check_code(code)? {
-                return Ok(Response(&self.0[mid..]));
+                return Ok(ApduResponse(&self.0[mid..]));
             }
         }
     }

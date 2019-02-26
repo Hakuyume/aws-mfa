@@ -1,11 +1,11 @@
+mod apdu_request;
+mod apdu_response;
 mod error;
-mod request;
-mod response;
 
+use self::apdu_request::ApduRequest;
+use self::apdu_response::ApduResponse;
 use self::error::check_code;
 pub use self::error::Error;
-use self::request::Request;
-use self::response::Response;
 pub use pcsc;
 use pcsc::{Card, Context, Protocols, Scope, ShareMode};
 use std::iter;
@@ -47,7 +47,7 @@ impl Yubikey {
         &self,
         buf: &'a mut Vec<u8>,
     ) -> Result<(&'a [u8], &'a [u8], Option<(&'a [u8], &'a [u8])>), Error> {
-        let mut res = Request::new(0x00, 0xa4, 0x04, 0x00, buf)
+        let mut res = ApduRequest::new(0x00, 0xa4, 0x04, 0x00, buf)
             .push_aid([0xa0, 0x00, 0x00, 0x05, 0x27, 0x21, 0x01])
             .transmit(&self.card)?;
         let version = res.pop(0x79)?;
@@ -69,7 +69,7 @@ impl Yubikey {
         challenge: &[u8],
         buf: &'a mut Vec<u8>,
     ) -> Result<(u8, &'a [u8]), Error> {
-        let mut res = Request::new(0x00, 0xa2, 0x00, if truncate { 0x01 } else { 0x00 }, buf)
+        let mut res = ApduRequest::new(0x00, 0xa2, 0x00, if truncate { 0x01 } else { 0x00 }, buf)
             .push(0x71, name)
             .push(0x74, challenge)
             .transmit(&self.card)?;
@@ -87,7 +87,7 @@ impl Yubikey {
         buf: &'a mut Vec<u8>,
     ) -> Result<impl 'a + Iterator<Item = Result<(&'a [u8], CalculateAllResponse<'a>), Error>>, Error>
     {
-        let res = Request::new(0x00, 0xa4, 0x00, if truncate { 0x01 } else { 0x00 }, buf)
+        let res = ApduRequest::new(0x00, 0xa4, 0x00, if truncate { 0x01 } else { 0x00 }, buf)
             .push(0x74, challenge)
             .transmit(&self.card)?;
         Ok(iter::repeat(()).scan(res, move |res, _| {
