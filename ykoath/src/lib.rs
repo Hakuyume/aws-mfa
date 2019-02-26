@@ -53,7 +53,10 @@ impl Yubikey {
             None
         } else {
             let challenge = apdu_res.pop(0x74)?;
-            let algorithm = apdu_res.pop(0x7b)?;
+            let algorithm = apdu_res.pop(0x7b).and_then(|a| match a.len() {
+                1 => Ok(a[0]),
+                len => Err(Error::UnexpectedLength(len as _)),
+            })?;
             Some(ChallengeWithAlgorithm {
                 challenge,
                 algorithm,
@@ -110,7 +113,7 @@ impl Yubikey {
 #[derive(Debug)]
 pub struct ChallengeWithAlgorithm<'a> {
     pub challenge: &'a [u8],
-    pub algorithm: &'a [u8],
+    pub algorithm: u8,
 }
 
 #[derive(Debug)]
