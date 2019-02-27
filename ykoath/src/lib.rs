@@ -101,7 +101,7 @@ impl Yubikey {
                 Some(apdu_res.pop(0x71).and_then(|name| {
                     let response = pop_response_with_digits(apdu_res, truncate)
                         .map(ResponseWithTag::Response)
-                        .or_else(|_| apdu_res.pop(0x77).map(|_| ResponseWithTag::HOTP))
+                        .or_else(|_| apdu_res.pop(0x77).map(|_| ResponseWithTag::Hotp))
                         .or_else(|_| apdu_res.pop(0x7c).map(|_| ResponseWithTag::Touch))?;
                     Ok(CalculateAllResponse { name, response })
                 }))
@@ -124,7 +124,7 @@ pub struct ResponseWithDigits<'a> {
 
 #[derive(Debug)]
 pub enum ResponseWithTag<'a> {
-    HOTP,
+    Hotp,
     Touch,
     Response(ResponseWithDigits<'a>),
 }

@@ -53,7 +53,7 @@ fn get_token_code_from_yubikey(issuer: &str) -> Result<String, Error> {
             info!("ykoath calculate: {:?}", response);
             Ok(response.response)
         }
-        ResponseWithTag::HOTP => Err(format_err!("HOTP is not supported")),
+        ResponseWithTag::Hotp => Err(format_err!("HOTP is not supported")),
     }?;
 
     // https://github.com/Yubico/yubikey-manager/blob/b0b894906e450cff726f7ae0e71b329378b4b0c4/ykman/util.py#L371
