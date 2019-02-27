@@ -55,7 +55,8 @@ impl<'a> ApduRequest<'a> {
                     .ok_or(Error::InsufficientData)?
                     .as_ptr() as *const _)
             });
-            let recv_len = recv.len();
+            let (recv_ptr, recv_len) = (recv.as_ptr(), recv.len());
+            assert_eq!(recv_ptr, self.0[mid + offset..].as_ptr());
             self.0.truncate(mid + offset + recv_len - 2);
             if !check_code(code)? {
                 return Ok(ApduResponse(&self.0[mid..]));
