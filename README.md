@@ -4,6 +4,11 @@ Currently, `aws-mfa` supports two methods.
 - [Yubikey (OATH-TOTP)](https://developers.yubico.com/OATH/)
 - Manual input (from your virtual device)
 
+## Requirements
+- Rust 1.31+
+- [OpenSSL](https://www.openssl.org/)
+- [PCSClite](https://pcsclite.apdu.fr/)
+
 ## Setup
 1. (only Yubikey users) Configure your Yubikey as the virtual MFA device of your IAM account  
     ([User Guide](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_mfa_enable_virtual.html#enable-virt-mfa-for-iam-user), *DO NOT CHOOSE U2F SECURITY KEY*).  
