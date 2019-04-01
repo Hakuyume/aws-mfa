@@ -26,7 +26,8 @@ fn get_token_code_from_yubikey(issuer: &str) -> Result<String, Error> {
     let mut buf = Vec::new();
     let yubikey = Yubikey::connect(&mut buf)?;
     // TODO: handle the case that "the authentication object is set"
-    info!("ykoath select: {:?}", yubikey.select(&mut buf)?);
+    let response = yubikey.select(&mut buf)?
+    info!("ykoath select: {:?}", response);
 
     // https://github.com/Yubico/yubikey-manager/blob/b0b894906e450cff726f7ae0e71b329378b4b0c4/ykman/util.py#L400-L401
     let timestamp = SystemTime::now().duration_since(UNIX_EPOCH)?.as_secs();
