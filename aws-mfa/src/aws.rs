@@ -4,7 +4,7 @@ use log::info;
 use rusoto_iam::Iam;
 use rusoto_sts::{Credentials, GetSessionTokenRequest, Sts};
 
-pub fn get_account_alias<C>(client: &C) -> impl Future<Item = String, Error = Error>
+pub(crate) fn get_account_alias<C>(client: &C) -> impl Future<Item = String, Error = Error>
 where
     C: Iam,
 {
@@ -24,7 +24,7 @@ where
         })
 }
 
-pub fn get_caller_identity<C>(
+pub(crate) fn get_caller_identity<C>(
     client: &C,
 ) -> impl Future<Item = (String, String, String), Error = Error>
 where
@@ -51,7 +51,7 @@ where
         })
 }
 
-pub fn get_session_token<C>(
+pub(crate) fn get_session_token<C>(
     client: &C,
     account: &str,
     user_name: &str,

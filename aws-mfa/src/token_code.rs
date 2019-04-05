@@ -1,7 +1,7 @@
 use failure::{format_err, Error};
 use log::warn;
 
-pub fn get_token_code(issuer: &str) -> Result<String, Error> {
+pub(crate) fn get_token_code(issuer: &str) -> Result<String, Error> {
     get_token_code_from_yubikey(&issuer)
         .map_err(|err| {
             warn!("{}", err);
