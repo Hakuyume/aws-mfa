@@ -1,5 +1,6 @@
 use super::{check_code, ApduResponse, Error};
 use pcsc::{Card, MAX_BUFFER_SIZE};
+use std::convert::TryInto;
 
 pub(crate) struct ApduRequest<'a>(&'a mut Vec<u8>);
 
@@ -49,12 +50,12 @@ impl<'a> ApduRequest<'a> {
                 },
                 &mut recv[offset..],
             )?;
-            let code = u16::from_be_bytes(unsafe {
-                *(recv
-                    .get(recv.len().wrapping_sub(2)..)
+            let code = u16::from_be_bytes(
+                recv.get(recv.len().wrapping_sub(2)..)
                     .ok_or(Error::InsufficientData)?
-                    .as_ptr() as *const _)
-            });
+                    .try_into()
+                    .unwrap(),
+            );
             let (recv_ptr, recv_len) = (recv.as_ptr(), recv.len());
             assert_eq!(recv_ptr, self.0[mid + offset..].as_ptr());
             self.0.truncate(mid + offset + recv_len - 2);

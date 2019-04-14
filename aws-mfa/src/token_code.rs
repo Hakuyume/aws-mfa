@@ -20,6 +20,7 @@ fn get_token_code_from_prompt(issuer: &str) -> Result<String, Error> {
 #[cfg(feature = "yubikey")]
 fn get_token_code_from_yubikey(issuer: &str) -> Result<String, Error> {
     use log::info;
+    use std::convert::TryInto;
     use std::time::{SystemTime, UNIX_EPOCH};
     use ykoath::{ResponseWithDigits, ResponseWithTag, Yubikey};
 
@@ -58,8 +59,7 @@ fn get_token_code_from_yubikey(issuer: &str) -> Result<String, Error> {
     }?;
 
     // https://github.com/Yubico/yubikey-manager/blob/b0b894906e450cff726f7ae0e71b329378b4b0c4/ykman/util.py#L371
-    assert_eq!(response.len(), 4);
-    let response = u32::from_be_bytes(unsafe { *(response.as_ptr() as *const _) });
+    let response = u32::from_be_bytes(response.try_into().unwrap());
     let token_code = format!(
         "{:01$}",
         response % 10_u32.pow(u32::from(digits)),
