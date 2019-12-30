@@ -5,7 +5,7 @@ Currently, `aws-mfa` supports two methods.
 - Manual input (from your virtual device)
 
 ## Requirements
-- Rust 1.34+
+- Rust 1.39+
 - [OpenSSL](https://www.openssl.org/)
 - [PCSClite](https://pcsclite.apdu.fr/)
 

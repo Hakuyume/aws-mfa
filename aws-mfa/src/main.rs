@@ -3,8 +3,8 @@ mod token_code;
 
 use aws::*;
 use chrono::{DateTime, Duration, Utc};
-use failure::{format_err, Error};
-use futures::prelude::*;
+use failure::{format_err, Fallible};
+use futures::{compat::Future01CompatExt, try_join};
 use ini::Ini;
 use log::info;
 use rusoto_core::{
@@ -17,11 +17,10 @@ use std::env;
 use std::process::Command;
 use std::sync::Arc;
 use token_code::get_token_code;
-use tokio_core::reactor::Core;
 
-fn main() -> Result<(), Error> {
+#[tokio::main]
+async fn main() -> Fallible<()> {
     env_logger::init();
-    let mut core = Core::new()?;
 
     let credentials_path = dirs::home_dir()
         .ok_or_else(|| format_err!("Cannot detect home directory"))?
@@ -30,7 +29,7 @@ fn main() -> Result<(), Error> {
 
     let provider = Arc::new(DefaultCredentialsProvider::new()?);
     let profile_name = {
-        let credentials = core.run(provider.credentials())?;
+        let credentials = provider.credentials().compat().await?;
         let access_key = credentials.aws_access_key_id();
         info!("access key (base): {}", access_key);
         format!("mfa/{}", access_key)
@@ -72,17 +71,14 @@ fn main() -> Result<(), Error> {
         let sts_client =
             StsClient::new_with(HttpClient::new()?, provider.clone(), Default::default());
 
-        let (account_alias, (account, _, user_name)) =
-            core.run(get_account_alias(&iam_client).join(get_caller_identity(&sts_client)))?;
+        let (account_alias, (account, _, user_name)) = try_join!(
+            get_account_alias(&iam_client),
+            get_caller_identity(&sts_client),
+        )?;
         let issuer = format!("Amazon Web Services:{}@{}", user_name, account_alias);
         info!("issuer: {}", issuer);
         let token_code = get_token_code(&issuer)?;
-        let credentials = core.run(get_session_token(
-            &sts_client,
-            &account,
-            &user_name,
-            &token_code,
-        ))?;
+        let credentials = get_session_token(&sts_client, &account, &user_name, &token_code).await?;
 
         credentials_ini
             .with_section(Some(&profile_name as &str))

@@ -1,7 +1,7 @@
-use failure::{format_err, Error};
+use failure::{format_err, Fallible};
 use log::warn;
 
-pub(crate) fn get_token_code(issuer: &str) -> Result<String, Error> {
+pub(crate) fn get_token_code(issuer: &str) -> Fallible<String> {
     get_token_code_from_yubikey(&issuer)
         .map_err(|err| {
             warn!("{}", err);
@@ -10,7 +10,7 @@ pub(crate) fn get_token_code(issuer: &str) -> Result<String, Error> {
         .or_else(|_| get_token_code_from_prompt(&issuer))
 }
 
-fn get_token_code_from_prompt(issuer: &str) -> Result<String, Error> {
+fn get_token_code_from_prompt(issuer: &str) -> Fallible<String> {
     Ok(rprompt::prompt_reply_stdout(&format!(
         "Enter token code for '{}' > ",
         issuer
@@ -18,7 +18,7 @@ fn get_token_code_from_prompt(issuer: &str) -> Result<String, Error> {
 }
 
 #[cfg(feature = "yubikey")]
-fn get_token_code_from_yubikey(issuer: &str) -> Result<String, Error> {
+fn get_token_code_from_yubikey(issuer: &str) -> Fallible<String> {
     use log::info;
     use std::convert::TryInto;
     use std::time::{SystemTime, UNIX_EPOCH};
@@ -70,6 +70,6 @@ fn get_token_code_from_yubikey(issuer: &str) -> Result<String, Error> {
 }
 
 #[cfg(not(feature = "yubikey"))]
-fn get_token_code_from_yubikey(_: &str) -> Result<String, Error> {
+fn get_token_code_from_yubikey(_: &str) -> Fallible<String> {
     Err(format_err!("Yubikey support is disabled"))
 }

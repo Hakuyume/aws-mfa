@@ -13,12 +13,12 @@ chrono = "0.4"
 dirs = "2.0"
 env_logger = "0.7"
 failure = "0.1"
-futures = "0.1"
+futures = { version = "0.3", features = ["compat"] }
 log = "0.4"
 rprompt = "1.0"
 rusoto_core = "0.42"
 rusoto_iam = "0.42"
 rusoto_sts = "0.42"
 rust-ini = "0.13"
-tokio-core = "0.1"
+tokio = { version = "0.2", features = ["macros"] }
 ykoath = { path = "../ykoath", optional = true }
