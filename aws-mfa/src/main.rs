@@ -18,8 +18,11 @@ use std::process::Command;
 use std::sync::Arc;
 use token_code::get_token_code;
 
-#[tokio::main]
-async fn main() -> Fallible<()> {
+fn main() {
+    tokio_compat::run_std(async { _main().await.unwrap() })
+}
+
+async fn _main() -> Fallible<()> {
     env_logger::init();
 
     let credentials_path = dirs::home_dir()

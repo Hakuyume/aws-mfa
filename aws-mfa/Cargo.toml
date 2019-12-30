@@ -20,5 +20,5 @@ rusoto_core = "0.42"
 rusoto_iam = "0.42"
 rusoto_sts = "0.42"
 rust-ini = "0.13"
-tokio = { version = "0.2", features = ["macros"] }
+tokio-compat = "0.1"
 ykoath = { path = "../ykoath", optional = true }
