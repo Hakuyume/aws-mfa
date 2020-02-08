@@ -1,16 +1,14 @@
 mod aws;
 mod token_code;
 
+use anyhow::{format_err, Result};
 use aws::*;
 use chrono::{DateTime, Duration, Utc};
-use failure::{format_err, Fallible};
-use futures::{compat::Future01CompatExt, try_join};
+use futures::try_join;
 use ini::Ini;
 use log::info;
-use rusoto_core::{
-    credential::{DefaultCredentialsProvider, ProvideAwsCredentials},
-    HttpClient,
-};
+use rusoto_core::credential::{DefaultCredentialsProvider, ProvideAwsCredentials};
+use rusoto_core::HttpClient;
 use rusoto_iam::IamClient;
 use rusoto_sts::{Credentials, StsClient};
 use std::env;
@@ -18,11 +16,8 @@ use std::process::Command;
 use std::sync::Arc;
 use token_code::get_token_code;
 
-fn main() {
-    tokio_compat::run_std(async { _main().await.unwrap() })
-}
-
-async fn _main() -> Fallible<()> {
+#[tokio::main]
+async fn main() -> Result<()> {
     env_logger::init();
 
     let credentials_path = dirs::home_dir()
@@ -32,7 +27,7 @@ async fn _main() -> Fallible<()> {
 
     let provider = Arc::new(DefaultCredentialsProvider::new()?);
     let profile_name = {
-        let credentials = provider.credentials().compat().await?;
+        let credentials = provider.credentials().await?;
         let access_key = credentials.aws_access_key_id();
         info!("access key (base): {}", access_key);
         format!("mfa/{}", access_key)

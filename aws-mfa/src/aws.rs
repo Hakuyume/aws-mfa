@@ -1,18 +1,14 @@
-use failure::{ensure, format_err, Fallible};
-use futures::compat::Future01CompatExt;
+use anyhow::{ensure, format_err, Result};
 use log::info;
 use rusoto_iam::Iam;
 use rusoto_sts::{Credentials, GetSessionTokenRequest, Sts};
 
-pub(crate) async fn get_account_alias<C>(client: &C) -> Fallible<String>
+pub(crate) async fn get_account_alias<C>(client: &C) -> Result<String>
 where
     C: Iam,
 {
     info!("iam list-account-aliases");
-    let r = client
-        .list_account_aliases(Default::default())
-        .compat()
-        .await?;
+    let r = client.list_account_aliases(Default::default()).await?;
     info!("account aliases: {:?}", r);
     let account_alias = r
         .account_aliases
@@ -23,15 +19,12 @@ where
     Ok(account_alias)
 }
 
-pub(crate) async fn get_caller_identity<C>(client: &C) -> Fallible<(String, String, String)>
+pub(crate) async fn get_caller_identity<C>(client: &C) -> Result<(String, String, String)>
 where
     C: Sts,
 {
     info!("sts get-caller-identity");
-    let r = client
-        .get_caller_identity(Default::default())
-        .compat()
-        .await?;
+    let r = client.get_caller_identity(Default::default()).await?;
     info!("caller identity: {:?}", r);
     let account = r.account.ok_or_else(|| format_err!("No account"))?;
     info!("account: {}", account);
@@ -52,7 +45,7 @@ pub(crate) async fn get_session_token<C>(
     account: &str,
     user_name: &str,
     token_code: &str,
-) -> Fallible<Credentials>
+) -> Result<Credentials>
 where
     C: Sts,
 {
@@ -65,7 +58,6 @@ where
             serial_number: Some(serial_number),
             token_code: Some(token_code.to_owned()),
         })
-        .compat()
         .await?;
     info!("credentials: {:?}", r);
     r.credentials.ok_or_else(|| format_err!("No credentials"))
