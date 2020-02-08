@@ -37,7 +37,7 @@ async fn main() -> Result<()> {
     info!("load from: {}", credentials_path.display());
     let mut credentials_ini = Ini::load_from_file(&credentials_path)?;
     let credentials = credentials_ini
-        .section(Some(&profile_name as &str))
+        .section(Some(&profile_name))
         .and_then(|sec| {
             Some(Credentials {
                 access_key_id: sec.get("aws_access_key_id")?.to_owned(),
@@ -47,7 +47,7 @@ async fn main() -> Result<()> {
             })
         });
 
-    if let Some(ref credentials) = credentials {
+    if let Some(credentials) = &credentials {
         info!("expiration: {}", credentials.expiration);
     } else {
         info!("expiration: N/A");
@@ -79,14 +79,11 @@ async fn main() -> Result<()> {
         let credentials = get_session_token(&sts_client, &account, &user_name, &token_code).await?;
 
         credentials_ini
-            .with_section(Some(&profile_name as &str))
-            .set("aws_access_key_id", &credentials.access_key_id as &str)
-            .set(
-                "aws_secret_access_key",
-                &credentials.secret_access_key as &str,
-            )
-            .set("aws_session_token", &credentials.session_token as &str)
-            .set("aws_expiration", &credentials.expiration as &str);
+            .with_section(Some(&profile_name))
+            .set("aws_access_key_id", &credentials.access_key_id)
+            .set("aws_secret_access_key", &credentials.secret_access_key)
+            .set("aws_session_token", &credentials.session_token)
+            .set("aws_expiration", &credentials.expiration);
         credentials_ini.write_to_file(&credentials_path)?;
         info!("save to: {}", credentials_path.display());
         credentials
