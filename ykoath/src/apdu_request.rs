@@ -1,4 +1,4 @@
-use super::{check_code, ApduResponse, Error};
+use super::{check_code, ApduResponse, Error, Result};
 use pcsc::{Card, MAX_BUFFER_SIZE};
 use std::convert::TryInto;
 
@@ -29,7 +29,7 @@ impl<'a> ApduRequest<'a> {
         self
     }
 
-    pub(crate) fn transmit(self, card: &Card) -> Result<ApduResponse<'a>, Error> {
+    pub(crate) fn transmit(self, card: &Card) -> Result<ApduResponse<'a>> {
         if self.0.len() >= 5 {
             self.0[4] = (self.0.len() - 5) as _;
         }

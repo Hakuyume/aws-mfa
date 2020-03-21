@@ -9,18 +9,21 @@ pub use self::error::Error;
 pub use pcsc;
 use pcsc::{Card, Context, Protocols, Scope, ShareMode};
 use std::iter;
+use std::result;
+
+pub type Result<T> = result::Result<T, Error>;
 
 pub struct Yubikey {
     card: Card,
 }
 
 impl Yubikey {
-    pub fn connect(buf: &mut Vec<u8>) -> Result<Self, Error> {
+    pub fn connect(buf: &mut Vec<u8>) -> Result<Self> {
         let context = Context::establish(Scope::User)?;
         Self::connect_with(&context, buf)
     }
 
-    pub fn connect_with(context: &Context, buf: &mut Vec<u8>) -> Result<Self, Error> {
+    pub fn connect_with(context: &Context, buf: &mut Vec<u8>) -> Result<Self> {
         const YK_READER_NAME: &str = "yubico yubikey";
 
         unsafe {
@@ -43,7 +46,7 @@ impl Yubikey {
         })
     }
 
-    pub fn select<'a>(&self, buf: &'a mut Vec<u8>) -> Result<SelectResponse<'a>, Error> {
+    pub fn select<'a>(&self, buf: &'a mut Vec<u8>) -> Result<SelectResponse<'a>> {
         let mut apdu_res = ApduRequest::new(0x00, 0xa4, 0x04, 0x00, buf)
             .push_aid([0xa0, 0x00, 0x00, 0x05, 0x27, 0x21, 0x01])
             .transmit(&self.card)?;
@@ -75,7 +78,7 @@ impl Yubikey {
         name: &[u8],
         challenge: &[u8],
         buf: &'a mut Vec<u8>,
-    ) -> Result<CalculateResponse<'a>, Error> {
+    ) -> Result<CalculateResponse<'a>> {
         let mut apdu_res =
             ApduRequest::new(0x00, 0xa2, 0x00, if truncate { 0x01 } else { 0x00 }, buf)
                 .push(0x71, name)
@@ -90,7 +93,7 @@ impl Yubikey {
         truncate: bool,
         challenge: &[u8],
         buf: &'a mut Vec<u8>,
-    ) -> Result<impl 'a + Iterator<Item = Result<CalculateAllResponse<'a>, Error>>, Error> {
+    ) -> Result<impl 'a + Iterator<Item = Result<CalculateAllResponse<'a>>>> {
         let apdu_res = ApduRequest::new(0x00, 0xa4, 0x00, if truncate { 0x01 } else { 0x00 }, buf)
             .push(0x74, challenge)
             .transmit(&self.card)?;
@@ -150,7 +153,7 @@ pub struct CalculateAllResponse<'a> {
 fn pop_response_with_digits<'a>(
     apdu_res: &mut ApduResponse<'a>,
     truncate: bool,
-) -> Result<ResponseWithDigits<'a>, Error> {
+) -> Result<ResponseWithDigits<'a>> {
     apdu_res
         .pop(if truncate { 0x76 } else { 0x75 })
         .and_then(|r| {

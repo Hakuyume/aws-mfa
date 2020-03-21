@@ -1,4 +1,4 @@
-use super::Error;
+use super::{Error, Result};
 
 pub(crate) struct ApduResponse<'a>(pub(crate) &'a [u8]);
 
@@ -7,7 +7,7 @@ impl<'a> ApduResponse<'a> {
         self.0.is_empty()
     }
 
-    pub(crate) fn pop(&mut self, expected_tag: u8) -> Result<&'a [u8], Error> {
+    pub(crate) fn pop(&mut self, expected_tag: u8) -> Result<&'a [u8]> {
         let tag = *self.0.get(0).ok_or(Error::InsufficientData)?;
         if tag == expected_tag {
             let len = *self.0.get(1).ok_or(Error::InsufficientData)? as usize;
