@@ -75,7 +75,7 @@ async fn main() -> Result<()> {
         )?;
         let issuer = format!("Amazon Web Services:{}@{}", user_name, account_alias);
         info!("issuer: {}", issuer);
-        let token_code = get_token_code(&issuer)?;
+        let token_code = get_token_code(issuer).await?;
         let credentials = get_session_token(&sts_client, &account, &user_name, &token_code).await?;
 
         credentials_ini

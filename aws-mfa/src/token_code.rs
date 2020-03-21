@@ -1,13 +1,17 @@
 use anyhow::{format_err, Result};
 use log::warn;
+use tokio::task;
 
-pub(crate) fn get_token_code(issuer: &str) -> Result<String> {
-    get_token_code_from_yubikey(&issuer)
-        .map_err(|err| {
-            warn!("{}", err);
-            err
-        })
-        .or_else(|_| get_token_code_from_prompt(&issuer))
+pub(crate) async fn get_token_code(issuer: String) -> Result<String> {
+    task::spawn_blocking(move || {
+        get_token_code_from_yubikey(&issuer)
+            .map_err(|err| {
+                warn!("{}", err);
+                err
+            })
+            .or_else(|_| get_token_code_from_prompt(&issuer))
+    })
+    .await?
 }
 
 fn get_token_code_from_prompt(issuer: &str) -> Result<String> {
