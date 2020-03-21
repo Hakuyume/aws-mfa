@@ -1,18 +1,26 @@
-use std::error;
-use std::fmt;
-
-#[derive(Debug)]
+#[derive(Debug, thiserror::Error)]
 pub enum Error {
+    #[error("No Yubikey found")]
     NoDevice,
+    #[error("Received data does not have enough length")]
     InsufficientData,
+    #[error("Unexpected tag (0x{0:02x})")]
     UnexpectedTag(u8),
+    #[error("Unexpected length ({0})")]
     UnexpectedLength(u8),
+    #[error("Unknown response code (0x{0:04x})")]
     Unknown(u16),
-    Pcsc(pcsc::Error),
+    #[error(transparent)]
+    Pcsc(#[from] pcsc::Error),
+    #[error("No space")]
     NoSpace,
+    #[error("No such object")]
     NoSuchObject,
+    #[error("Auth required")]
     AuthRequired,
+    #[error("Wrong syntax")]
     WrongSyntax,
+    #[error("Generic error")]
     GenericError,
 }
 
@@ -26,27 +34,5 @@ pub(crate) fn check_code(code: u16) -> Result<bool, Error> {
         0x6a80 => Err(Error::WrongSyntax),
         0x6581 => Err(Error::GenericError),
         _ => Err(Error::Unknown(code)),
-    }
-}
-
-impl fmt::Display for Error {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> Result<(), fmt::Error> {
-        match self {
-            Error::NoDevice => write!(f, "No Yubikey found"),
-            Error::InsufficientData => write!(f, "Received data does not have enough length"),
-            Error::UnexpectedTag(tag) => write!(f, "Unexpected tag (0x{:02x})", tag),
-            Error::UnexpectedLength(len) => write!(f, "Unexpected length ({})", len),
-            Error::Unknown(code) => write!(f, "Unknown response code (0x{:04x})", code),
-            Error::Pcsc(err) => err.fmt(f),
-            _ => fmt::Debug::fmt(self, f),
-        }
-    }
-}
-
-impl error::Error for Error {}
-
-impl From<pcsc::Error> for Error {
-    fn from(value: pcsc::Error) -> Self {
-        Error::Pcsc(value)
     }
 }
